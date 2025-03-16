@@ -4,54 +4,84 @@ namespace App\Http\Controllers;
 
 use App\Http\Resources\UserResource;
 use App\Models\User;
-use App\Notifications\ResetPasswordNotification;
-use Carbon\Carbon;
+use App\Models\VerificationCode;
 use Illuminate\Http\Request;
-use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Hash;
-use Illuminate\Support\Str;
 
 class PasswordResetController extends Controller
 {
-    public function sendResetLink(Request $request)
+    public function sendResetCode(Request $request)
     {
-        $request->validate(['email' => 'required|email|exists:users,email']);
+        $request->validate([
+            'phone_number' => 'required|exists:users,phone_number',
+        ]);
 
-        $email = $request->input('email');
+        $phone = $request->input('phone_number');
+        $code = 1111; //Затычка, затем заменить на mt_rand(1000,9999)
+        $expiresAt = now()->addMinutes(5);
 
-        $token = strtoupper(Str::random(8));
+        $user = User::where('phone_number', $phone)->first();
 
-        DB::table('password_reset_tokens')->updateOrInsert(
-            ['email' => $email],
-            ['token' => $token, 'created_at' => Carbon::now()]
+        VerificationCode::updateOrCreate(
+            ['user_id' => $user->id],
+            [
+                'code' => $code,
+                'expires_at' => $expiresAt
+            ]
         );
 
-        $user = User::where('email', $email)->first();
-        $user->notify(new ResetPasswordNotification($token));
+        $this->sendSmsReset($user->phone_number, "Ваш код для сброса пароля: {$code}");
 
-        return response()->json(['success' => true, 'message' => 'Код сброса отправлен на почту']);
+        return response()->json([
+            'success' => true,
+            'message' => 'Код сброса отправлен на номер телефона'
+        ]);
+    }
+
+    public function verifyCode(Request $request)
+    {
+        $request->validate([
+            'phone_number' => 'required|exists:users,phone_number',
+            'code' => 'required'
+        ]);
+
+        $user = User::where('phone_number', $request->phone_number)->first();
+
+        $verificationCode = VerificationCode::where('user_id', $user->id)
+            ->where('code', $request->code)
+            ->where('expires_at', '>', now())
+            ->first();
+
+        if (!$verificationCode) {
+            return response()->json([
+                'message' => 'Неверный или просроченный код'
+            ], 401);
+        }
+
+        return response()->json([
+            'success' => true,
+            'message' => 'Код подтверждён'
+        ]);
     }
 
     public function resetPassword(Request $request)
     {
         $request->validate([
-            'email' => 'required',
-            'password' => 'required',
-            'device' => 'required',
+            'phone_number' => 'required|exists:users,phone_number',
+            'password' => 'required|string',
+            'device' => 'required|string'
         ]);
 
-        $email = $request->input('email');
-        $newPassword = $request->input('password');
-
-        $user = User::where('email', $email)->first();
+        $user = User::where('phone_number', $request->phone_number)->first();
 
         if (!$user) {
-            return response()->json(['error' => 'User not found'], 404);
+            return response()->json([
+                'error' => 'User not found'
+            ], 404);
         }
 
-        $user->password = Hash::make($newPassword);
+        $user->password = Hash::make($request->input('password'));
         $user->save();
-
         $token = $user->createToken($request->device)->plainTextToken;
 
         return response()->json([
@@ -60,14 +90,8 @@ class PasswordResetController extends Controller
         ]);
     }
 
-
-    public function verifyToken(Request $request)
+    private function sendSmsReset($phoneNumber, $message)
     {
-        $request->validate([
-            'email' => 'required',
-            'token' => 'required'
-        ]);
-
-        return response()->json(['success' => true]);
+        //Добавить отправку СМС исходя от выбранного оператора (Никита Мобайл)
     }
 }

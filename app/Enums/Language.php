@@ -1,21 +1,16 @@
 <?php
 namespace App\Enums;
 
-use App\Traits\EnumTrait;
-
 enum Language: string
 {
-    use EnumTrait;
-
-
     case RUS = 'ru';
-    case KZ = 'kz';
+    case KG = 'kg';
 
     public function title(string $lang = null): string
     {
         $value = match ($this) {
             self::RUS => 'Русский',
-            self::KZ => 'Казахский',
+            self::KG => 'Кыргызский',
         };
 
         return __($value, locale: $lang);
@@ -25,7 +20,7 @@ enum Language: string
     {
         return match ($this) {
             self::RUS => '🇷🇺',
-            self::KZ => '🇰🇿',
+            self::KG => '🇰🇬',
         };
     }
 
