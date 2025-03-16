@@ -11,14 +11,13 @@ return new class extends Migration
      */
     public function up(): void
     {
-        Schema::create('notifications', function (Blueprint $table) {
+        Schema::create('verification_codes', function (Blueprint $table) {
             $table->id();
-            $table->string('title');
-            $table->text('message');
-            $table->enum('type', ['global', 'complex', 'personal']);
-            $table->foreignId('user_id')->nullable()->constrained();
-            $table->foreignId('residential_complex_id')->nullable()->constrained();
+            $table->foreignId('user_id')->constrained()->onDelete('cascade');
+            $table->string('code', 6);
+            $table->timestamp('expires_at');
             $table->timestamps();
+            $table->index(['user_id', 'code']);
         });
     }
 
@@ -27,6 +26,6 @@ return new class extends Migration
      */
     public function down(): void
     {
-        Schema::dropIfExists('notifications');
+        Schema::dropIfExists('verification_codes');
     }
 };

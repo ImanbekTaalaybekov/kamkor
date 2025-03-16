@@ -13,13 +13,13 @@ class AuthController extends Controller
     public function auth(Request $request)
     {
         $request->validate([
-            'personal_account' => 'required',
+            'pin' => 'required',
             'phone_number' => 'required',
             'password' => 'required',
             'device' => 'required',
         ]);
 
-        $user = User::where('personal_account', $request->personal_account)
+        $user = User::where('pin', $request->pin)
             ->where('phone_number', $request->phone_number)
             ->first();
 
@@ -37,7 +37,7 @@ class AuthController extends Controller
             ['code' => $code, 'expires_at' => $expiresAt]
         );
 
-        $this->sendSms($user->phone_number, "Ваш код подтверждения: $code");
+        $this->sendSmsVerify($user->phone_number, "Ваш код подтверждения: $code");
 
         return response()->json([
             'message' => 'SMS code sent',
@@ -46,9 +46,9 @@ class AuthController extends Controller
         ]);
     }
 
-    private function sendSms($phoneNumber, $message)
+    private function sendSmsVerify($phoneNumber, $message)
     {
-    //Добавить отправку СМС исходя от выбранного оператора (KCELL)
+    //Добавить отправку СМС исходя от выбранного оператора (Никита Мобайл)
     }
 
     public function verifySmsCode(Request $request)
@@ -82,32 +82,42 @@ class AuthController extends Controller
     public function register(Request $request)
     {
         $request->validate([
-            'name' => 'required|string|max:255',
-            'personal_account' => 'required|string|unique:users,personal_account',
-            'phone_number' => 'required|string|unique:users,phone_number',
-            'password' => ['required', 'string', 'min:6', 'regex:/^[a-zA-Z0-9]{6,}$/'],
-            'device' => 'required|string',
-            'residential_complex_id' => 'nullable|integer|exists:residential_complexes,id',
-            'block_number' => 'nullable|string|max:255',
-            'apartment_number' => 'nullable|string|max:255',
+            'pin' => 'required',
+            'name' => 'required',
+            'surname' => 'required',
+            'phone_number' => 'required',
+            'password' => 'required',
+            'device' => 'required',
         ]);
 
         $user = User::create([
             'name' => $request->name,
-            'personal_account' => $request->personal_account,
+            'surname' => $request->surname,
+            'pin' => $request->pin,
             'phone_number' => $request->phone_number,
             'password' => Hash::make($request->password),
-            'residential_complex_id' => $request->residential_complex_id,
-            'block_number' => $request->block_number,
-            'apartment_number' => $request->apartment_number,
         ]);
 
-        $token = $user->createToken($request->device)->plainTextToken;
+        $code = 1111; //Затычка, затем заменить на mt_rand(1000,9999)
+        $expiresAt = now()->addMinutes(2);
+
+        VerificationCode::updateOrCreate(
+            ['user_id' => $user->id],
+            ['code' => $code, 'expires_at' => $expiresAt]
+        );
+
+        $this->sendSmsRegister($user->phone_number, "Ваш код для регистрации: $code");
 
         return response()->json([
-            'auth_token' => $token,
-            'user' => new UserResource($user),
-        ]);
+            'message' => 'SMS code sent',
+            'requires_verification' => true,
+            'user_id' => $user->id,
+        ], 201);
+    }
+
+    private function sendSmsRegister($phoneNumber, $message)
+    {
+        //Добавить отправку СМС исходя от выбранного оператора (Никита Мобайл)
     }
 
 
@@ -122,10 +132,10 @@ class AuthController extends Controller
     {
         $input = $request->validate([
             'name' => 'nullable|string|max:255',
-            'password' => ['nullable', 'string', 'min:6', 'regex:/^[a-zA-Z0-9]{6,}$/'],
-            'residential_complex_id' => 'nullable|integer|exists:residential_complexes,id',
-            'block_number' => 'nullable|string|max:255',
-            'apartment_number' => 'nullable|string|max:255',
+            'surname' => 'nullable|string|max:255',
+            'password' => 'nullable|string|max:255',
+            'pin' => 'nullable|string|max:255',
+            'phone_number' => 'nullable|string|max:255',
         ]);
 
         $user = $request->user();
@@ -145,18 +155,5 @@ class AuthController extends Controller
     {
         $request->user()->tokens()->delete();
         return response()->json(['message' => 'Logged out successfully']);
-    }
-
-    public function updateFcmToken(Request $request)
-    {
-        $request->validate([
-            'fcm_token' => 'required|string'
-        ]);
-
-        $request->user()->update([
-            'fcm_token' => $request->fcm_token
-        ]);
-
-        return response()->json(['message' => 'FCM-токен обновлён']);
     }
 }
