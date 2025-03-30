@@ -19,6 +19,11 @@ class User extends Authenticatable implements CanResetPassword
         'pin',
         'password',
         'phone_number',
+        'region',
+        'fcm_token',
+        'uvd',
+        'address',
+        'icon'
     ];
 
     protected $hidden = [
@@ -33,5 +38,10 @@ class User extends Authenticatable implements CanResetPassword
     public function sendPasswordResetNotification($token)
     {
         $this->notify(new ResetPasswordNotification($token));
+    }
+
+    public function sosHistories()
+    {
+        return $this->hasMany(SosHistory::class);
     }
 }

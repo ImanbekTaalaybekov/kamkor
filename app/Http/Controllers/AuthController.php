@@ -88,6 +88,8 @@ class AuthController extends Controller
             'phone_number' => 'required',
             'password' => 'required',
             'device' => 'required',
+            'region' => 'required',
+            'uvd' => 'required',
         ]);
 
         $user = User::create([
@@ -95,7 +97,10 @@ class AuthController extends Controller
             'surname' => $request->surname,
             'pin' => $request->pin,
             'phone_number' => $request->phone_number,
+            'region' => $request->region,
+            'uvd' => $request->uvd,
             'password' => Hash::make($request->password),
+            'address' => $request->address,
         ]);
 
         $code = 1111; //Затычка, затем заменить на mt_rand(1000,9999)
@@ -136,6 +141,10 @@ class AuthController extends Controller
             'password' => 'nullable|string|max:255',
             'pin' => 'nullable|string|max:255',
             'phone_number' => 'nullable|string|max:255',
+            'region' => 'nullable|string|max:255',
+            'uvd' => 'nullable|string|max:255',
+            'address' => 'nullable|string|max:255',
+            'icon' => 'nullable|string|max:255',
         ]);
 
         $user = $request->user();
