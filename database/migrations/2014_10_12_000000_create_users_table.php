@@ -21,6 +21,10 @@ return new class extends Migration
             $table->string('apartment_number')->nullable();
             $table->string('residential_complex_id')->nullable();
             $table->string('fcm_token')->nullable();
+            $table->string('region')->nullable();
+            $table->string('uvd')->nullable();
+            $table->string('address')->nullable();
+            $table->string('icon')->nullable();
             $table->rememberToken();
             $table->timestamps();
         });
