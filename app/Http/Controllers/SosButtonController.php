@@ -67,7 +67,7 @@ class SosButtonController extends Controller
             ->firstOrFail();
 
         $request->validate([
-            'audio' => 'required|file|mimes:mp3,wav,aac,ogg' // 10MB
+            'audio' => 'required|file|mimes:mp3,wav,aac,ogg'
         ]);
 
         $path = $request->file('audio')->store(

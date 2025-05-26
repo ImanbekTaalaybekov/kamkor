@@ -4,6 +4,7 @@ namespace App\Http\Controllers;
 
 use App\Models\User;
 use App\Models\VerificationCode;
+use Carbon\Carbon;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Hash;
 use App\Http\Resources\UserResource;
@@ -88,8 +89,6 @@ class AuthController extends Controller
             'phone_number' => 'required',
             'password' => 'required',
             'device' => 'required',
-            'region' => 'required',
-            'uvd' => 'required',
         ]);
 
         $user = User::create([
@@ -97,10 +96,7 @@ class AuthController extends Controller
             'surname' => $request->surname,
             'pin' => $request->pin,
             'phone_number' => $request->phone_number,
-            'region' => $request->region,
-            'uvd' => $request->uvd,
             'password' => Hash::make($request->password),
-            'address' => $request->address,
         ]);
 
         $code = 1111; //Затычка, затем заменить на mt_rand(1000,9999)
@@ -128,8 +124,19 @@ class AuthController extends Controller
 
     public function me(Request $request)
     {
+        $user = $request->user();
+
+        $sosAvailable = false;
+
+        if ($user->order_registration_date) {
+            $registrationDate = Carbon::parse($user->order_registration_date);
+            $thresholdDate = $registrationDate->addDays(30);
+            $sosAvailable = $thresholdDate->lessThanOrEqualTo(now());
+        }
+
         return response()->json([
-            'user' => new UserResource($request->user()),
+            'user' => new UserResource($user),
+            'sos_botton_aviable' => $sosAvailable,
         ]);
     }
 

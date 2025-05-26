@@ -5,6 +5,7 @@ use App\Http\Controllers\CrisisCenterController;
 use App\Http\Controllers\EmergencyInstructionController;
 use App\Http\Controllers\PasswordResetController;
 use App\Http\Controllers\PsychologicalHelpController;
+use App\Http\Controllers\SecurityOrderController;
 use App\Http\Controllers\SosButtonController;
 use App\Http\Controllers\SosHistoryController;
 use App\Http\Controllers\TemplateMessageController;
@@ -43,3 +44,5 @@ Route::get('/psychological-help/{id}', [PsychologicalHelpController::class, 'sho
 
 Route::get('/emergency-instructions', [EmergencyInstructionController::class, 'index']);
 Route::get('/emergency-instructions/{id}', [EmergencyInstructionController::class, 'show']);
+
+Route::post('/update-from-kamkor', [SecurityOrderController::class, 'updateUserFromKamkor'])->middleware('auth:sanctum');

@@ -21,8 +21,9 @@ class User extends Authenticatable implements CanResetPassword
         'phone_number',
         'region',
         'fcm_token',
-        'uvd',
+        'uvd_code',
         'address',
+        'order_registration_date',
         'icon'
     ];
 
