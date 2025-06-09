@@ -126,13 +126,16 @@ class AuthController extends Controller
     {
         $user = $request->user();
 
+        $sosAvailable = true;
+
+        /*Потом раскоментить и заменить true на false - проверка доступности тревожной кнопки
         $sosAvailable = false;
 
         if ($user->order_registration_date) {
             $registrationDate = Carbon::parse($user->order_registration_date);
             $thresholdDate = $registrationDate->addDays(30);
             $sosAvailable = $thresholdDate->lessThanOrEqualTo(now());
-        }
+        }*/
 
         return response()->json([
             'user' => new UserResource($user),
