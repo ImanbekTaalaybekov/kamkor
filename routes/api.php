@@ -10,6 +10,7 @@ use App\Http\Controllers\SosButtonController;
 use App\Http\Controllers\SosHistoryController;
 use App\Http\Controllers\TemplateMessageController;
 use App\Http\Controllers\TrustedContactController;
+use App\Http\Controllers\UsagePrivacyPolicyController;
 use Illuminate\Support\Facades\Route;
 
 Route::post('/user/auth', [AuthController::class, 'auth']);
@@ -46,3 +47,5 @@ Route::get('/emergency-instructions', [EmergencyInstructionController::class, 'i
 Route::get('/emergency-instructions/{id}', [EmergencyInstructionController::class, 'show']);
 
 Route::post('/update-from-kamkor', [SecurityOrderController::class, 'updateUserFromKamkor'])->middleware('auth:sanctum');
+
+Route::post('/privacy-policy', [UsagePrivacyPolicyController::class, 'index']);
