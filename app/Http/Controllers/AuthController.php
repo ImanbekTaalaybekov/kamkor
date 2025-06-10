@@ -139,7 +139,7 @@ class AuthController extends Controller
 
         return response()->json([
             'user' => new UserResource($user),
-            'sos_botton_aviable' => $sosAvailable,
+            'sos_button_available' => $sosAvailable,
         ]);
     }
 
