@@ -57,6 +57,7 @@ class AuthController extends Controller
         $request->validate([
             'user_id' => 'required|exists:users,id',
             'code' => 'required',
+            'device' => 'required',
         ]);
 
         $verificationCode = VerificationCode::where('user_id', $request->user_id)
