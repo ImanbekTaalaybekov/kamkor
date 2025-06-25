@@ -1,0 +1,224 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <title>КАМКОР — Админка</title>
+    <style>
+        body { margin: 0; font-family: sans-serif; background: #f4f4f4; }
+        header { background: #1ea45a; color: white; display: flex; justify-content: space-between; align-items: center; padding: 15px 30px; }
+        header h1 { margin: 0; }
+        .lang-box { background: #0f7a38; padding: 5px 10px; border-radius: 4px; font-weight: bold; }
+
+        .main { padding: 20px 40px; background: white; margin: 20px; border-radius: 10px; }
+        .filters { display: flex; justify-content: space-between; margin-bottom: 15px; align-items: center; flex-wrap: wrap; }
+
+        .filters select, .filters input {
+            padding: 8px 12px;
+            margin-right: 10px;
+            border-radius: 5px;
+            border: 1px solid #ccc;
+            font-size: 14px;
+        }
+
+        table { width: 100%; border-collapse: collapse; font-size: 14px; }
+        th, td { padding: 12px; text-align: left; border-bottom: 1px solid #ddd; }
+
+        tr.red-row { background: #ffdddd; font-weight: bold; }
+        tr:hover { background: #f9f9f9; }
+
+        .status-btn {
+            border: none;
+            border-radius: 4px;
+            padding: 5px 10px;
+            cursor: pointer;
+            font-size: 13px;
+        }
+        .blue { background: #007bff; color: white; }
+        .green { background: #28a745; color: white; }
+        .gray { background: #6c757d; color: white; }
+
+        .pagination { margin-top: 20px; display: flex; justify-content: center; }
+        .pagination button {
+            margin: 0 5px;
+            padding: 5px 10px;
+            border: none;
+            border-radius: 4px;
+            background: #1ea45a;
+            color: white;
+            cursor: pointer;
+        }
+
+        .top-info { margin-bottom: 10px; color: #555; }
+
+        .logout-btn {
+            background: #c0392b;
+            color: white;
+            border: none;
+            padding: 8px 12px;
+            border-radius: 4px;
+            cursor: pointer;
+            margin-left: 15px;
+        }
+    </style>
+</head>
+<body>
+
+<header>
+    <h1>КАМКОР</h1>
+    <div>
+        <span id="adminName"></span>
+        <button class="logout-btn" onclick="logout()">Выход</button>
+        <span class="lang-box">KG</span>
+    </div>
+</header>
+
+<div class="main">
+    <h2>Чуйская область</h2>
+    <div class="top-info">Тут отображены все пользователи КАМКОР по Чуйской области, для сортировки воспользуйтесь фильтрами</div>
+
+    <div class="filters">
+        <div>
+            <select>
+                <option>От А до Я</option>
+                <option>От Я до А</option>
+            </select>
+            <select>
+                <option>Район</option>
+            </select>
+        </div>
+        <input type="text" id="searchInput" placeholder="Введите номер ИИН" oninput="filterByIIN()">
+    </div>
+
+    <table>
+        <thead>
+        <tr>
+            <th>ИНН</th>
+            <th>Имя пользователя</th>
+            <th>Номер телефона</th>
+            <th>Район</th>
+            <th>УВД</th>
+            <th>Дата рег.</th>
+            <th>Статус</th>
+            <th></th>
+        </tr>
+        </thead>
+        <tbody id="sosTable"></tbody>
+    </table>
+
+    <div class="pagination">
+        <button onclick="prevPage()">‹</button>
+        <span id="pageNum">1</span>
+        <button onclick="nextPage()">›</button>
+    </div>
+</div>
+
+<script>
+    const token = localStorage.getItem('token');
+    const adminName = localStorage.getItem('admin_name');
+
+    if (!token) {
+        window.location.href = '/admin_login.html';
+    }
+
+    document.getElementById('adminName').textContent = adminName || '';
+
+    let allData = [];
+    let page = 1;
+    const perPage = 10;
+
+    function renderTable() {
+        const tbody = document.getElementById('sosTable');
+        tbody.innerHTML = '';
+
+        const filtered = allData.filter(item => {
+            const iin = item.user?.pin || '';
+            const query = document.getElementById('searchInput').value.trim();
+            return iin.includes(query);
+        });
+
+        const start = (page - 1) * perPage;
+        const current = filtered.slice(start, start + perPage);
+
+        current.forEach(item => {
+            const tr = document.createElement('tr');
+            if (item.status === 'в обработке' && item.user?.region === 'Аламудунский') {
+                tr.classList.add('red-row');
+            }
+
+            const statusText = item.status || '—';
+            let statusClass = '';
+            if (statusText === 'в обработке') statusClass = 'blue';
+            else if (statusText === 'обработан') statusClass = 'gray';
+            else if (statusText === 'отменен') statusClass = 'green';
+
+            tr.innerHTML = `
+        <td>${item.user?.pin || '-'}</td>
+        <td>${item.user?.name || '-'}</td>
+        <td>${item.user?.phone_number || '-'}</td>
+        <td>${item.user?.region || '-'}</td>
+        <td>${item.user?.uvd_code || '-'}</td>
+        <td>${item.user?.order_registration_date || '-'}</td>
+        <td><span class="status-btn ${statusClass}">${statusText}</span></td>
+        <td>${item.status !== 'done' ? `<button class="status-btn green" onclick="markAsDone(${item.id})">Отметить</button>` : ''}</td>
+      `;
+            tbody.appendChild(tr);
+        });
+
+        document.getElementById('pageNum').textContent = page;
+    }
+
+    async function fetchSos() {
+        try {
+            const res = await fetch('kamkor.mvd.kg/api/admin/sos-histories', {
+                headers: { 'Authorization': 'Bearer ' + token }
+            });
+
+            if (res.status === 401) {
+                logout();
+                return;
+            }
+
+            const data = await res.json();
+            allData = data.data;
+            renderTable();
+        } catch (e) {
+            console.error('Ошибка загрузки заявок:', e);
+        }
+    }
+
+    async function markAsDone(id) {
+        await fetch('kamkor.mvd.kg/api/admin/sos-histories/' + id + '/done', {
+            method: 'PUT',
+            headers: { 'Authorization': 'Bearer ' + token }
+        });
+        fetchSos();
+    }
+
+    function filterByIIN() {
+        page = 1;
+        renderTable();
+    }
+
+    function nextPage() {
+        page++;
+        renderTable();
+    }
+
+    function prevPage() {
+        if (page > 1) {
+            page--;
+            renderTable();
+        }
+    }
+
+    function logout() {
+        localStorage.removeItem('token');
+        localStorage.removeItem('admin_name');
+        window.location.href = '/admin_login.html';
+    }
+
+    window.onload = fetchSos;
+</script>
+
+</body>
+</html>
