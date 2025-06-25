@@ -26,7 +26,8 @@ class SosButtonController extends Controller
         $sosHistory = SosHistory::create([
             'user_id' => $user->id,
             'geo' => $validated['geolocation'],
-            'audio_file' => null
+            'audio_file' => null,
+            'status' => 'pending'
         ]);
 
         $template = TemplateMessage::where('user_id', $user->id)->first();

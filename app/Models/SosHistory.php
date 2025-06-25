@@ -9,6 +9,12 @@ class SosHistory extends Model
     protected $fillable = [
         'user_id',
         'geo',
-        'audio_file'
+        'audio_file',
+        'status'
     ];
+
+    public function user()
+    {
+        return $this->belongsTo(User::class);
+    }
 }

@@ -11,12 +11,14 @@ return new class extends Migration
      */
     public function up(): void
     {
-        Schema::create('sos_histories', function (Blueprint $table) {
+        Schema::create('admin_users', function (Blueprint $table) {
             $table->id();
-            $table->foreignId('user_id')->constrained()->onDelete('cascade');
-            $table->string('geo')->nullable();
-            $table->string('audio_file')->nullable();
-            $table->string('status')->nullable();
+            $table->string('name')->nullable();
+            $table->string('password')->nullable();
+            $table->string('fcm_token')->nullable();
+            $table->string('region')->nullable();
+            $table->string('uvd_code')->nullable();
+            $table->rememberToken();
             $table->timestamps();
         });
     }
@@ -26,6 +28,6 @@ return new class extends Migration
      */
     public function down(): void
     {
-        Schema::dropIfExists('sos_histories');
+        Schema::dropIfExists('admin_users');
     }
 };

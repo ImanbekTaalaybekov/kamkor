@@ -1,5 +1,7 @@
 <?php
 
+use App\Http\Controllers\AdminAuthController;
+use App\Http\Controllers\AdminSosHistoryController;
 use App\Http\Controllers\AuthController;
 use App\Http\Controllers\CrisisCenterController;
 use App\Http\Controllers\EmergencyInstructionController;
@@ -49,3 +51,9 @@ Route::get('/emergency-instructions/{id}', [EmergencyInstructionController::clas
 Route::post('/update-from-kamkor', [SecurityOrderController::class, 'updateUserFromKamkor'])->middleware('auth:sanctum');
 
 Route::post('/privacy-policy', [UsagePrivacyPolicyController::class, 'index']);
+
+Route::post('/admin-user/auth', [AdminAuthController::class, 'auth']);
+Route::get('/admin-user/me', [AdminAuthController::class, 'me'])->middleware('auth:sanctum');
+Route::get('/admin/sos-histories', [AdminSosHistoryController::class, 'getRegionSosHistories'])->middleware('auth:sanctum');
+Route::put('/admin/sos-histories/{id}/done', [AdminSosHistoryController::class, 'markAsDone'])->middleware('auth:sanctum');
+
