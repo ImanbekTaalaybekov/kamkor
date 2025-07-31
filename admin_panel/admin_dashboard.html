@@ -115,6 +115,10 @@
 <script>
     const token = localStorage.getItem('token');
     const adminName = localStorage.getItem('admin_name');
+    +   const adminRole = localStorage.getItem('admin_role');
+    +   const adminRegion = localStorage.getItem('admin_region');
+    +   const adminDistrict = localStorage.getItem('admin_district');
+    +   const adminUvdCode = localStorage.getItem('admin_uvd_code');
 
     if (!token) {
         window.location.href = '/admin_login.html';
@@ -130,20 +134,26 @@
         const tbody = document.getElementById('sosTable');
         tbody.innerHTML = '';
 
-        const filtered = allData.filter(item => {
-            const iin = item.user?.pin || '';
-            const query = document.getElementById('searchInput').value.trim();
-            return iin.includes(query);
-        });
+        const query = document.getElementById('searchInput').value.trim();
+
+        const filtered = allData
+            .filter(item => {
+                const iin = item.user?.pin || '';
+                return iin.includes(query);
+            })
+            .filter(item => {
+                const user = item.user || {};
+                if (adminRole === 'region') return user.region === adminRegion;
+                if (adminRole === 'district') return user.district === adminDistrict;
+                if (adminRole === 'local') return user.uvd_code === adminUvdCode;
+                return false;
+            });
 
         const start = (page - 1) * perPage;
         const current = filtered.slice(start, start + perPage);
 
         current.forEach(item => {
             const tr = document.createElement('tr');
-            if (item.status === 'в обработке' && item.user?.region === 'Аламудунский') {
-                tr.classList.add('red-row');
-            }
 
             const statusText = item.status || '—';
             let statusClass = '';
@@ -152,15 +162,15 @@
             else if (statusText === 'отменен') statusClass = 'green';
 
             tr.innerHTML = `
-        <td>${item.user?.pin || '-'}</td>
-        <td>${item.user?.name || '-'}</td>
-        <td>${item.user?.phone_number || '-'}</td>
-        <td>${item.user?.region || '-'}</td>
-        <td>${item.user?.uvd_code || '-'}</td>
-        <td>${item.user?.order_registration_date || '-'}</td>
-        <td><span class="status-btn ${statusClass}">${statusText}</span></td>
-        <td>${item.status !== 'done' ? `<button class="status-btn green" onclick="markAsDone(${item.id})">Отметить</button>` : ''}</td>
-      `;
+                <td>${item.user?.pin || '-'}</td>
+                <td>${item.user?.name || '-'}</td>
+                <td>${item.user?.phone_number || '-'}</td>
+                <td>${item.user?.region || '-'}</td>
+                <td>${item.user?.uvd_code || '-'}</td>
+                <td>${item.user?.order_registration_date || '-'}</td>
+                <td><span class="status-btn ${statusClass}">${statusText}</span></td>
+                <td>${item.status !== 'done' ? `<button class="status-btn green" onclick="markAsDone(${item.id})">Отметить</button>` : ''}</td>
+            `;
             tbody.appendChild(tr);
         });
 
@@ -212,13 +222,11 @@
     }
 
     function logout() {
-        localStorage.removeItem('token');
-        localStorage.removeItem('admin_name');
+        localStorage.clear();
         window.location.href = '/admin_login.html';
     }
 
     window.onload = fetchSos;
 </script>
-
 </body>
 </html>

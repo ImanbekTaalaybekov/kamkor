@@ -3,6 +3,7 @@
 namespace App\Http\Controllers;
 
 use App\Services\KamkorSoapService;
+use Exception;
 use Illuminate\Support\Facades\Auth;
 
 class SecurityOrderController extends Controller
@@ -26,7 +27,7 @@ class SecurityOrderController extends Controller
             ]);
 
             return response()->json(['success' => true, 'user' => $user]);
-        } catch (\Exception $e) {
+        } catch (Exception $e) {
             return response()->json(['error' => 'Ошибка SOAP-запроса', 'message' => $e->getMessage()], 500);
         }
     }

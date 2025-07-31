@@ -17,8 +17,10 @@ class AdminUser extends Authenticatable implements CanResetPassword
         'name',
         'password',
         'region',
+        'district',
         'fcm_token',
         'uvd_code',
+        'role',
     ];
 
     protected $hidden = [
