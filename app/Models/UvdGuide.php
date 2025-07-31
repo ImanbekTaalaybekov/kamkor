@@ -9,5 +9,7 @@ class UvdGuide extends Model
     protected $fillable = [
         'name',
         'code',
+        'region',
+        'district'
     ];
 }

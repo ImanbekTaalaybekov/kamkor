@@ -17,7 +17,9 @@ return new class extends Migration
             $table->string('password')->nullable();
             $table->string('fcm_token')->nullable();
             $table->string('region')->nullable();
+            $table->string('district')->nullable();
             $table->string('uvd_code')->nullable();
+            $table->enum('role', ['region', 'district', 'local'])->nullable();
             $table->rememberToken();
             $table->timestamps();
         });
