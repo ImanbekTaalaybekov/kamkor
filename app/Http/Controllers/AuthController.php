@@ -92,6 +92,18 @@ class AuthController extends Controller
             'device' => 'required',
         ]);
 
+        if (User::where('pin', $request->pin)->exists()) {
+            return response()->json([
+                'error' => 'Пользователь с таким ИНН уже существует'
+            ], 409);
+        }
+
+        if (User::where('phone_number', $request->phone_number)->exists()) {
+            return response()->json([
+                'error' => 'Пользователь с таким номером телефона уже существует'
+            ], 409);
+        }
+
         $user = User::create([
             'name' => $request->name,
             'surname' => $request->surname,
@@ -126,17 +138,7 @@ class AuthController extends Controller
     public function me(Request $request)
     {
         $user = $request->user();
-
-        $sosAvailable = true;
-
-        /*Потом раскоментить и заменить true на false - проверка доступности тревожной кнопки
-        $sosAvailable = false;
-
-        if ($user->order_registration_date) {
-            $registrationDate = Carbon::parse($user->order_registration_date);
-            $thresholdDate = $registrationDate->addDays(30);
-            $sosAvailable = $thresholdDate->lessThanOrEqualTo(now());
-        }*/
+        $sosAvailable = !is_null($user->daysRemaining) && $user->daysRemaining != 0;
 
         return response()->json([
             'user' => new UserResource($user),

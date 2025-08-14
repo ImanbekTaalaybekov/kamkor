@@ -24,6 +24,8 @@ return new class extends Migration
             $table->string('uvd_code')->nullable();
             $table->string('address')->nullable();
             $table->string('icon')->nullable();
+            $table->string('orderNumber')->nullable();
+            $table->integer('daysRemaining')->nullable();
             $table->rememberToken();
             $table->timestamps();
         });

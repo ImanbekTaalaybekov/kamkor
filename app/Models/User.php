@@ -14,17 +14,19 @@ class User extends Authenticatable implements CanResetPassword
     use HasApiTokens, HasFactory, Notifiable;
 
     protected $fillable = [
+        'pin',
+        'phone_number',
         'name',
         'surname',
-        'pin',
         'password',
-        'phone_number',
-        'region',
         'fcm_token',
+        'order_registration_date',
+        'region',
         'uvd_code',
         'address',
-        'order_registration_date',
-        'icon'
+        'icon',
+        'orderNumber',
+        'daysRemaining',
     ];
 
     protected $hidden = [
