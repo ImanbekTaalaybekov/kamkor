@@ -33,9 +33,11 @@ class SosButtonController extends Controller
         $template = TemplateMessage::where('user_id', $user->id)->first();
         $messageText = $template->message_text ?? 'Помогите, я в беде!';
 
-        $geoSignature = $template->geo_signature
-            ? str_replace('{geo}', $sosHistory->geo, $template->geo_signature)
-            : "Моё местоположение: https://maps.google.com/?q={$sosHistory->geo}";
+        if ($template && $template->geo_signature) {
+            $geoSignature = str_replace('{geo}', $sosHistory->geo, $template->geo_signature);
+        } else {
+            $geoSignature = "Моё местоположение: https://maps.google.com/?q={$sosHistory->geo}";
+        }
 
         $fullMessage = "$messageText\n$geoSignature";
 
