@@ -8,6 +8,7 @@ use Illuminate\Foundation\Auth\User as Authenticatable;
 use Illuminate\Notifications\Notifiable;
 use Illuminate\Contracts\Auth\CanResetPassword;
 use Laravel\Sanctum\HasApiTokens;
+use App\Models\UvdGuide;
 
 class User extends Authenticatable implements CanResetPassword
 {
@@ -46,5 +47,10 @@ class User extends Authenticatable implements CanResetPassword
     public function sosHistories()
     {
         return $this->hasMany(SosHistory::class);
+    }
+
+    public function uvdGuide()
+    {
+        return $this->belongsTo(UvdGuide::class, 'uvd_code', 'code');
     }
 }

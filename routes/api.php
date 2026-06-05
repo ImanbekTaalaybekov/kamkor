@@ -56,4 +56,5 @@ Route::post('/admin-user/auth', [AdminAuthController::class, 'auth']);
 Route::get('/admin-user/me', [AdminAuthController::class, 'me'])->middleware('auth:sanctum');
 Route::get('/admin/sos-histories', [AdminSosHistoryController::class, 'getRegionSosHistories'])->middleware('auth:sanctum');
 Route::put('/admin/sos-histories/{id}/done', [AdminSosHistoryController::class, 'markAsDone'])->middleware('auth:sanctum');
+Route::put('/admin/sos-histories/{id}/status', [AdminSosHistoryController::class, 'updateStatus'])->middleware('auth:sanctum');
 
