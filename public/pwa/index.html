@@ -1,0 +1,23 @@
+<!doctype html>
+<html lang="ru">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>KAMKOR PWA</title>
+    <link rel="manifest" href="/pwa/manifest.webmanifest" />
+    <meta name="theme-color" content="#2fb44b" />
+    <script type="module" crossorigin src="/pwa/assets/index-DgaL0O35.js"></script>
+    <link rel="stylesheet" crossorigin href="/pwa/assets/index-CUeBuOXi.css">
+  </head>
+  <body>
+    <div id="root"></div>
+    <script>
+    if ('serviceWorker' in navigator) {
+      window.addEventListener('load', () => {
+        navigator.serviceWorker.register('/pwa/sw.js', { scope: '/pwa/' })
+          .catch(error => console.error('Service Worker registration failed:', error));
+      });
+    }
+  </script>
+  </body>
+</html>

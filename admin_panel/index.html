@@ -33,12 +33,13 @@
     table { width:100%; border-collapse:collapse; background:white; min-width:1000px; }
     th, td { text-align:left; border-bottom:1px solid var(--border); padding:12px 10px; vertical-align:top; font-size:14px; }
     th { background:#f9fafb; font-size:13px; text-transform:uppercase; color:#4b5563; }
-    tr.status-pending { background:#fff7ed; }
+    tr.status-pending { background:#fee2e2; border-left:6px solid #dc2626; }
+    tr.status-pending td { color:#7f1d1d; font-weight:700; }
     tr.status-in_progress { background:#eff6ff; }
     tr.status-done { background:#ecfdf5; }
     tr.status-cancelled { background:#fef2f2; }
     .badge { display:inline-block; padding:5px 9px; border-radius:999px; font-size:12px; font-weight:700; }
-    .badge.pending { background:#fed7aa; color:#9a3412; }
+    .badge.pending { background:#dc2626; color:#fff; }
     .badge.in_progress { background:#bfdbfe; color:#1d4ed8; }
     .badge.done { background:#bbf7d0; color:#047857; }
     .badge.cancelled { background:#fecaca; color:#b91c1c; }
@@ -47,6 +48,44 @@
     .row-actions select { min-width:145px; }
     .row-actions button { padding:8px 10px; border:0; border-radius:7px; background:#111827; color:white; cursor:pointer; margin-top:6px; }
     .empty { padding:28px; color:var(--muted); text-align:center; }
+    .pending-alert {
+      width:100%;
+      min-height:116px;
+      margin:18px 0 22px;
+      padding:22px 26px;
+      border-radius:14px;
+      background:linear-gradient(135deg,#b91c1c,#ef4444);
+      color:white;
+      display:flex;
+      align-items:center;
+      gap:20px;
+      box-shadow:0 12px 30px rgba(185,28,28,.35);
+      animation:pendingPulse 1.3s infinite;
+    }
+    .pending-alert-icon { font-size:48px; line-height:1; }
+    .pending-alert-title { font-size:24px; font-weight:900; letter-spacing:.5px; }
+    .pending-alert-count { margin-top:5px; font-size:21px; }
+    .pending-alert-count strong { font-size:34px; }
+    .pending-alert button {
+      margin-left:auto;
+      padding:10px 14px;
+      border:1px solid rgba(255,255,255,.7);
+      border-radius:9px;
+      background:rgba(255,255,255,.14);
+      color:white;
+      font-weight:700;
+      cursor:pointer;
+      white-space:nowrap;
+    }
+    @keyframes pendingPulse {
+      0%,100% { box-shadow:0 12px 30px rgba(185,28,28,.32); }
+      50% { box-shadow:0 12px 42px rgba(239,68,68,.7); }
+    }
+    @media (max-width:700px) {
+      .pending-alert { align-items:flex-start; flex-wrap:wrap; padding:18px; }
+      .pending-alert-title { font-size:20px; }
+      .pending-alert button { margin-left:0; }
+    }
     a { color:#1d4ed8; }
   </style>
 </head>
@@ -75,6 +114,15 @@
       <div class="status-line">Данные выдаются backend-ом согласно роли администратора.</div>
       <div class="status-line">Обновление: <span id="lastUpdate">—</span></div>
       <div id="dashboardMessage" class="error"></div>
+
+      <div id="pendingAlert" class="pending-alert hidden" role="alert" aria-live="assertive">
+        <div class="pending-alert-icon">🚨</div>
+        <div>
+          <div class="pending-alert-title">ЕСТЬ НЕОБРАБОТАННЫЕ SOS-ЗАЯВКИ</div>
+          <div class="pending-alert-count">Количество: <strong id="pendingCount">0</strong></div>
+        </div>
+        <button id="sirenToggleBtn" type="button">Отключить сирену</button>
+      </div>
 
       <div class="toolbar">
         <select id="sortMode">
@@ -130,15 +178,24 @@
   </main>
 
 <script>
-const API_BASE = 'https://kamkor.mvd.kg/api';
+const API_BASE = '/api';
 const TOKEN_KEYS = ['admin_token', 'token'];
 const POLL_MS = 15000;
 let allItems = [];
 let pollTimer = null;
 let knownIds = new Set();
 let currentPage = 1;
+let previousPendingCount = null;
+let audioContext = null;
+let sirenOscillator = null;
+let sirenGain = null;
+let sirenInterval = null;
+let sirenStopTimer = null;
+let queuedSiren = false;
+let sirenMuted = localStorage.getItem('kamkor_siren_muted') === '1';
 
 document.getElementById('apiLabel').textContent = API_BASE;
+updateSirenButton();
 
 function getToken() {
   for (const key of TOKEN_KEYS) {
@@ -181,6 +238,96 @@ function showDashboard() {
 function statusLabel(status) {
   return ({ pending:'Новая', in_progress:'В обработке', done:'Обработана', cancelled:'Отменена' })[status] || status || '—';
 }
+
+function updateSirenButton() {
+  const btn = document.getElementById('sirenToggleBtn');
+  if (!btn) return;
+  btn.textContent = sirenMuted ? 'Включить сирену' : 'Отключить сирену';
+}
+
+function updatePendingAlert(count) {
+  const alertBox = document.getElementById('pendingAlert');
+  document.getElementById('pendingCount').textContent = count;
+  alertBox.classList.toggle('hidden', count === 0);
+  updateSirenButton();
+}
+
+function getAudioContext() {
+  if (!audioContext) {
+    const AudioCtx = window.AudioContext || window.webkitAudioContext;
+    if (AudioCtx) audioContext = new AudioCtx();
+  }
+  return audioContext;
+}
+
+function stopSiren() {
+  if (sirenInterval) clearInterval(sirenInterval);
+  if (sirenStopTimer) clearTimeout(sirenStopTimer);
+  sirenInterval = null;
+  sirenStopTimer = null;
+
+  if (sirenOscillator) {
+    try { sirenOscillator.stop(); } catch (_) {}
+    try { sirenOscillator.disconnect(); } catch (_) {}
+  }
+  if (sirenGain) {
+    try { sirenGain.disconnect(); } catch (_) {}
+  }
+
+  sirenOscillator = null;
+  sirenGain = null;
+}
+
+async function playSiren(duration = 8000) {
+  if (sirenMuted) return;
+
+  const ctx = getAudioContext();
+  if (!ctx) return;
+
+  try {
+    if (ctx.state === 'suspended') await ctx.resume();
+  } catch (_) {}
+
+  if (ctx.state !== 'running') {
+    queuedSiren = true;
+    return;
+  }
+
+  queuedSiren = false;
+  stopSiren();
+
+  sirenOscillator = ctx.createOscillator();
+  sirenGain = ctx.createGain();
+
+  sirenOscillator.type = 'sawtooth';
+  sirenOscillator.frequency.setValueAtTime(650, ctx.currentTime);
+  sirenGain.gain.setValueAtTime(0.055, ctx.currentTime);
+
+  sirenOscillator.connect(sirenGain);
+  sirenGain.connect(ctx.destination);
+  sirenOscillator.start();
+
+  let high = false;
+  sirenInterval = setInterval(() => {
+    if (!sirenOscillator || !audioContext) return;
+    high = !high;
+    sirenOscillator.frequency.setTargetAtTime(
+      high ? 980 : 650,
+      audioContext.currentTime,
+      0.08
+    );
+  }, 420);
+
+  sirenStopTimer = setTimeout(stopSiren, duration);
+}
+
+document.addEventListener('click', async () => {
+  const ctx = getAudioContext();
+  if (ctx && ctx.state === 'suspended') {
+    try { await ctx.resume(); } catch (_) {}
+  }
+  if (queuedSiren && !sirenMuted) playSiren();
+});
 
 function normalizeItems(data) {
   if (Array.isArray(data)) return data;
@@ -241,6 +388,13 @@ function getFilteredSortedItems() {
   let items = [...allItems];
   if (filter !== 'all') items = items.filter(x => (x.status || 'pending') === filter);
   items.sort((a,b) => {
+    const statusA = a.status || 'pending';
+    const statusB = b.status || 'pending';
+    const priorityA = statusA === 'pending' ? 0 : 1;
+    const priorityB = statusB === 'pending' ? 0 : 1;
+
+    if (priorityA !== priorityB) return priorityA - priorityB;
+
     const da = new Date(a.created_at || a.createdAt || 0).getTime();
     const db = new Date(b.created_at || b.createdAt || 0).getTime();
     return sort === 'new_first' ? db - da : da - db;
@@ -331,7 +485,22 @@ async function loadSos() {
     }
     msg.textContent = '';
     const items = normalizeItems(data);
+    const pendingCount = items.filter(x => (x.status || 'pending') === 'pending').length;
     const newItems = items.filter(x => x.id && !knownIds.has(x.id));
+    const newPendingItems = newItems.filter(x => (x.status || 'pending') === 'pending');
+
+    updatePendingAlert(pendingCount);
+
+    // Каждые 15 секунд, после обновления данных, снова запускаем сирену,
+    // пока остаётся хотя бы одна необработанная заявка.
+    if (pendingCount > 0) {
+      playSiren();
+    } else {
+      stopSiren();
+    }
+
+    previousPendingCount = pendingCount;
+
     if (knownIds.size && newItems.length) {
       msg.className = 'success';
       msg.textContent = `Новых SOS-заявок: ${newItems.length}`;
@@ -405,7 +574,24 @@ document.getElementById('loginForm').addEventListener('submit', async (event) =>
   }
 });
 
-document.getElementById('logoutBtn').addEventListener('click', () => { clearToken(); showLogin(); });
+document.getElementById('logoutBtn').addEventListener('click', () => {
+  stopSiren();
+  clearToken();
+  showLogin();
+});
+
+document.getElementById('sirenToggleBtn').addEventListener('click', () => {
+  sirenMuted = !sirenMuted;
+  localStorage.setItem('kamkor_siren_muted', sirenMuted ? '1' : '0');
+  updateSirenButton();
+
+  if (sirenMuted) {
+    stopSiren();
+  } else {
+    const pendingCount = allItems.filter(x => (x.status || 'pending') === 'pending').length;
+    if (pendingCount > 0) playSiren();
+  }
+});
 document.getElementById('refreshBtn').addEventListener('click', loadSos);
 document.getElementById('sortMode').addEventListener('change', () => { currentPage = 1; renderTable(); });
 document.getElementById('statusFilter').addEventListener('change', () => { currentPage = 1; renderTable(); });
