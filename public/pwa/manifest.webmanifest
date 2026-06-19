@@ -1,6 +1,6 @@
 {
-  "name": "KAMKOR",
-  "short_name": "KAMKOR",
+  "name": "Calculator",
+  "short_name": "Calculator",
   "description": "KAMKOR PWA",
   "start_url": "/pwa/",
   "scope": "/pwa/",

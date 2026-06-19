@@ -1,4 +1,4 @@
-const CACHE_NAME = 'kamkor-pwa-v1';
+const CACHE_NAME = 'kamkor-pwa-v2-phone';
 const APP_SHELL = [
   '/pwa/',
   '/pwa/index.html',
