@@ -2,78 +2,57 @@
 
 namespace App\Http\Controllers;
 
+use App\Http\Resources\UserResource;
 use App\Models\User;
-use App\Models\VerificationCode;
-use Carbon\Carbon;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Hash;
-use App\Http\Resources\UserResource;
 
 class AuthController extends Controller
 {
-    public function auth(Request $request)
+    /**
+     * Вход только по персональной ссылке/QR, созданным администратором, и ПИН пользователя.
+     * Токен Sanctum не имеет срока жизни и хранится на backend до удаления пользователя администратором.
+     */
+    /**
+     * Validates only the personal access link. The PWA calls this before
+     * showing the PIN field, so an ordinary /pwa/ opening cannot imitate
+     * the login form.
+     */
+    public function validateAccessLink(Request $request)
     {
-        $request->validate([
-            'pin' => 'required',
-            'phone_number' => 'required',
-            'password' => 'required',
-            'device' => 'required',
+        $validated = $request->validate([
+            'access_token' => ['required', 'string', 'max:255'],
         ]);
 
-        $user = User::where('pin', $request->pin)
-            ->where('phone_number', $request->phone_number)
-            ->first();
+        $user = $this->findUserByAccessToken($validated['access_token']);
 
-        if (!$user || !Hash::check($request->password, $user->password)) {
+        if (!$user) {
             return response()->json([
-                'message' => 'Invalid personal account or password'
+                'message' => 'Персональная ссылка недействительна.',
+            ], 404);
+        }
+
+        return response()->json(['valid' => true]);
+    }
+
+    public function loginByAccessLink(Request $request)
+    {
+        $validated = $request->validate([
+            'access_token' => ['required', 'string', 'max:255'],
+            'pin' => ['required', 'string', 'max:255'],
+            'device' => ['nullable', 'string', 'max:100'],
+        ]);
+
+        $user = $this->findUserByAccessToken($validated['access_token'], $validated['pin']);
+
+        if (!$user) {
+            return response()->json([
+                'message' => 'Ссылка недействительна или ПИН введён неверно.',
             ], 401);
         }
 
-        $code = 1111; //Затычка, затем заменить на mt_rand(1000,9999)
-        $expiresAt = now()->addMinutes(5);
-
-        VerificationCode::updateOrCreate(
-            ['user_id' => $user->id],
-            ['code' => $code, 'expires_at' => $expiresAt]
-        );
-
-        $this->sendSmsVerify($user->phone_number, "Ваш код подтверждения: $code");
-
-        return response()->json([
-            'message' => 'SMS code sent',
-            'requires_verification' => true,
-            'user_id' => $user->id,
-        ]);
-    }
-
-    private function sendSmsVerify($phoneNumber, $message)
-    {
-    //Добавить отправку СМС исходя от выбранного оператора (Никита Мобайл)
-    }
-
-    public function verifySmsCode(Request $request)
-    {
-        $request->validate([
-            'user_id' => 'required|exists:users,id',
-            'code' => 'required',
-            'device' => 'required',
-        ]);
-
-        $verificationCode = VerificationCode::where('user_id', $request->user_id)
-            ->where('code', $request->code)
-            ->where('expires_at', '>', now())
-            ->first();
-
-        if (!$verificationCode) {
-            return response()->json([
-                'message' => 'Invalid or expired code'
-            ], 401);
-        }
-
-        $verificationCode->delete();
-        $user = User::find($request->user_id);
-        $token = $user->createToken($request->device)->plainTextToken;
+        $device = $validated['device'] ?? 'kamkor-pwa';
+        $token = $user->createToken($device)->plainTextToken;
 
         return response()->json([
             'auth_token' => $token,
@@ -81,68 +60,25 @@ class AuthController extends Controller
         ]);
     }
 
-    public function register(Request $request)
+    private function findUserByAccessToken(string $accessToken, ?string $pin = null): ?User
     {
-        $request->validate([
-            'pin' => 'required',
-            'name' => 'required',
-            'surname' => 'required',
-            'phone_number' => 'required',
-            'password' => 'required',
-            'device' => 'required',
-        ]);
+        $query = User::query()->whereNotNull('access_link_token');
 
-        if (User::where('pin', $request->pin)->exists()) {
-            return response()->json([
-                'error' => 'Пользователь с таким ИНН уже существует'
-            ], 409);
+        if ($pin !== null) {
+            $query->where('pin', $pin);
         }
 
-        if (User::where('phone_number', $request->phone_number)->exists()) {
-            return response()->json([
-                'error' => 'Пользователь с таким номером телефона уже существует'
-            ], 409);
-        }
-
-        $user = User::create([
-            'name' => $request->name,
-            'surname' => $request->surname,
-            'pin' => $request->pin,
-            'phone_number' => $request->phone_number,
-            'password' => Hash::make($request->password),
-        ]);
-
-        $code = 1111; //Затычка, затем заменить на mt_rand(1000,9999)
-        $expiresAt = now()->addMinutes(2);
-
-        VerificationCode::updateOrCreate(
-            ['user_id' => $user->id],
-            ['code' => $code, 'expires_at' => $expiresAt]
-        );
-
-        $this->sendSmsRegister($user->phone_number, "Ваш код для регистрации: $code");
-
-        return response()->json([
-            'message' => 'SMS code sent',
-            'requires_verification' => true,
-            'user_id' => $user->id,
-        ], 201);
+        return $query->get()->first(function (User $candidate) use ($accessToken): bool {
+            return Hash::check($accessToken, $candidate->access_link_token);
+        });
     }
-
-    private function sendSmsRegister($phoneNumber, $message)
-    {
-        //Добавить отправку СМС исходя от выбранного оператора (Никита Мобайл)
-    }
-
 
     public function me(Request $request)
     {
-        $user = $request->user();
-        $sosAvailable = !is_null($user->daysRemaining) && $user->daysRemaining != 0;
-
         return response()->json([
-            'user' => new UserResource($user),
-            'sos_button_available' => $sosAvailable,
+            'user' => new UserResource($request->user()),
+            // SOS доступен всегда, независимо от срока охранного ордера и статуса синхронизации.
+            'sos_button_available' => true,
         ]);
     }
 
@@ -151,31 +87,23 @@ class AuthController extends Controller
         $input = $request->validate([
             'name' => 'nullable|string|max:255',
             'surname' => 'nullable|string|max:255',
-            'password' => 'nullable|string|max:255',
-            'pin' => 'nullable|string|max:255',
             'phone_number' => 'nullable|string|max:255',
-            'region' => 'nullable|string|max:255',
-            'uvd' => 'nullable|string|max:255',
             'address' => 'nullable|string|max:255',
             'icon' => 'nullable|string|max:255',
         ]);
 
-        $user = $request->user();
-
-        if (isset($input['password'])) {
-            $input['password'] = Hash::make($input['password']);
-        }
-
-        $user->update(array_filter($input));
+        $request->user()->update(array_filter($input, static fn ($value) => $value !== null));
 
         return response()->json([
-            'user' => new UserResource($user),
+            'user' => new UserResource($request->user()->fresh()),
         ]);
     }
 
     public function logout(Request $request)
     {
-        $request->user()->tokens()->delete();
-        return response()->json(['message' => 'Logged out successfully']);
+        // Удаляется только текущая сессия на этом устройстве, а не все сессии пользователя.
+        $request->user()->currentAccessToken()?->delete();
+
+        return response()->json(['message' => 'Сессия на этом устройстве завершена.']);
     }
 }

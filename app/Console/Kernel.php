@@ -4,7 +4,6 @@ namespace App\Console;
 
 use Illuminate\Console\Scheduling\Schedule;
 use Illuminate\Foundation\Console\Kernel as ConsoleKernel;
-use Illuminate\Support\Facades\DB;
 
 class Kernel extends ConsoleKernel
 {
@@ -12,13 +11,13 @@ class Kernel extends ConsoleKernel
      * Define the application's command schedule.
      */
     protected $commands = [
-        Commands\StartPushNotificationCommand::class,
         Commands\CleanupPasswordResetTokens::class,
+        Commands\SyncExpiredSecurityOrders::class,
     ];
     protected function schedule(Schedule $schedule): void
     {
-        $schedule->command('push:send')->everyMinute();
         $schedule->command('cleanup:password-reset-tokens')->hourly();
+        $schedule->command('kamkor:sync-expired-orders')->dailyAt('02:00')->withoutOverlapping();
     }
 
     /**
