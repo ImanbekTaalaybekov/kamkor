@@ -15,6 +15,7 @@ class User extends Authenticatable implements CanResetPassword
     use HasApiTokens, HasFactory, Notifiable;
 
     protected $fillable = [
+        'created_by_admin_id',
         'pin',
         'phone_number',
         'name',
@@ -28,6 +29,11 @@ class User extends Authenticatable implements CanResetPassword
         'icon',
         'orderNumber',
         'daysRemaining',
+        'access_link_token',
+        'access_link_created_at',
+        'kamkor_sync_status',
+        'kamkor_sync_error',
+        'kamkor_last_synced_at',
     ];
 
     protected $hidden = [
@@ -37,11 +43,18 @@ class User extends Authenticatable implements CanResetPassword
 
     protected $casts = [
         'password' => 'hashed',
+        'access_link_created_at' => 'datetime',
+        'kamkor_last_synced_at' => 'datetime',
     ];
 
     public function sendPasswordResetNotification($token)
     {
         $this->notify(new ResetPasswordNotification($token));
+    }
+
+    public function createdByAdmin()
+    {
+        return $this->belongsTo(AdminUser::class, 'created_by_admin_id');
     }
 
     public function sosHistories()

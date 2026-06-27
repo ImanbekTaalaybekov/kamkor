@@ -1,8 +1,11 @@
-const CACHE_NAME = 'kamkor-pwa-v2-phone';
+const CACHE_NAME = 'kamkor-pwa-v5-access-link-gate';
 const APP_SHELL = [
   '/pwa/',
   '/pwa/index.html',
   '/pwa/manifest.webmanifest',
+  '/pwa/install-prompt.js',
+  '/pwa/install-prompt.css',
+  '/pwa/access-link-gate.js',
   '/pwa/icons/icon-192.png',
   '/pwa/icons/icon-512.png'
 ];
