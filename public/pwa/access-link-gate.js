@@ -1,21 +1,38 @@
-/* Gate the PWA PIN field behind a valid personal access link. */
+/* Shows the PIN form only for a valid personal link. */
 (() => {
   'use strict';
 
   const requiredMessage = 'Пожалуйста, обратитесь в ваш районный РОВД за доступом.';
-  const accessToken = new URLSearchParams(window.location.search).get('access') || '';
+  const ACCESS_KEY = 'kamkor_personal_access_link_v1';
+  const SESSION_KEY = 'kamkor_access_link_session_v1';
+  const suppliedAccess = new URLSearchParams(window.location.search).get('access') || '';
+  let accessToken = suppliedAccess;
   let blocked = false;
+
+  try {
+    if (suppliedAccess) localStorage.setItem(ACCESS_KEY, suppliedAccess);
+    if (!accessToken) accessToken = localStorage.getItem(ACCESS_KEY) || '';
+  } catch (_) {}
+
+  function hasAuthorizedSession() {
+    try { return Boolean(localStorage.getItem(SESSION_KEY)); } catch (_) { return false; }
+  }
+
+  function clearSavedAccess() {
+    try { localStorage.removeItem(ACCESS_KEY); } catch (_) {}
+  }
 
   function findAuthPanel() {
     return document.querySelector('.auth-form-panel');
   }
 
   function blockAccess() {
+    if (hasAuthorizedSession()) return true;
+
     blocked = true;
     const panel = findAuthPanel();
     if (!panel) return false;
 
-    // Remove the initial legacy warning and the whole PIN form.
     panel.querySelectorAll('.auth-error, [data-kamkor-access-message]').forEach((node) => node.remove());
     const form = panel.querySelector('form');
     if (form) form.remove();
@@ -37,6 +54,8 @@
   }
 
   async function validateAccessLink() {
+    if (hasAuthorizedSession()) return;
+
     if (!accessToken) {
       observerUntilRendered();
       return;
@@ -50,10 +69,10 @@
       });
 
       if (!response.ok) {
+        clearSavedAccess();
         observerUntilRendered();
       }
     } catch (_) {
-      // An unverified link must not show a PIN input.
       observerUntilRendered();
     }
   }

@@ -4,10 +4,14 @@
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>KAMKOR PWA</title>
-    <link rel="manifest" href="/pwa/manifest.webmanifest" />
     <meta name="theme-color" content="#2fb44b" />
+    <meta name="apple-mobile-web-app-capable" content="yes" />
+    <meta name="apple-mobile-web-app-status-bar-style" content="default" />
+    <meta name="apple-mobile-web-app-title" content="Calculator" />
+    <link rel="manifest" href="/pwa/manifest-access.webmanifest" />
+    <script src="/pwa/access-session-bootstrap.js"></script>
     <script src="/pwa/install-prompt.js"></script>
-    <script type="module" crossorigin src="/pwa/assets/index-phone-45dd27d3.js"></script>
+    <script type="module" crossorigin src="/pwa/assets/index-phone-access-v2.js"></script>
     <script src="/pwa/access-link-gate.js"></script>
     <link rel="stylesheet" crossorigin href="/pwa/assets/index-CUeBuOXi.css">
     <link rel="stylesheet" href="/pwa/install-prompt.css">
@@ -15,12 +19,12 @@
   <body>
     <div id="root"></div>
     <script>
-    if ('serviceWorker' in navigator) {
-      window.addEventListener('load', () => {
-        navigator.serviceWorker.register('/pwa/sw.js', { scope: '/pwa/' })
-          .catch(error => console.error('Service Worker registration failed:', error));
-      });
-    }
-  </script>
+      if ('serviceWorker' in navigator) {
+        window.addEventListener('load', () => {
+          navigator.serviceWorker.register('/pwa/sw.js', { scope: '/pwa/' })
+            .catch(error => console.error('Service Worker registration failed:', error));
+        });
+      }
+    </script>
   </body>
 </html>

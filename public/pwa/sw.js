@@ -1,11 +1,14 @@
-const CACHE_NAME = 'kamkor-pwa-v5-access-link-gate';
+const CACHE_NAME = 'kamkor-pwa-v8-personal-install';
 const APP_SHELL = [
   '/pwa/',
   '/pwa/index.html',
-  '/pwa/manifest.webmanifest',
+  '/pwa/manifest-access.webmanifest',
+  '/pwa/access-session-bootstrap.js',
   '/pwa/install-prompt.js',
   '/pwa/install-prompt.css',
   '/pwa/access-link-gate.js',
+  '/pwa/assets/index-phone-access-v2.js',
+  '/pwa/assets/index-CUeBuOXi.css',
   '/pwa/icons/icon-192.png',
   '/pwa/icons/icon-512.png'
 ];
@@ -26,15 +29,10 @@ self.addEventListener('activate', event => {
 
 self.addEventListener('fetch', event => {
   const url = new URL(event.request.url);
-
-  if (url.origin !== self.location.origin || url.pathname.startsWith('/api/')) {
-    return;
-  }
+  if (url.origin !== self.location.origin || url.pathname.startsWith('/api/')) return;
 
   if (event.request.mode === 'navigate') {
-    event.respondWith(
-      fetch(event.request).catch(() => caches.match('/pwa/index.html'))
-    );
+    event.respondWith(fetch(event.request).catch(() => caches.match('/pwa/index.html')));
     return;
   }
 
