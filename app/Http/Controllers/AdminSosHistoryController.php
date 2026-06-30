@@ -3,7 +3,9 @@
 namespace App\Http\Controllers;
 
 use App\Models\SosHistory;
+use App\Models\User;
 use App\Models\UvdGuide;
+use Carbon\Carbon;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Validation\Rule;
@@ -11,12 +13,8 @@ use Illuminate\Validation\Rule;
 class AdminSosHistoryController extends Controller
 {
     /**
-     * Список SOS-заявок для админки.
-     *
-     * Доступ считается через справочник УВД:
-     * - role=region   видит все заявки по UvdGuide.region
-     * - role=district видит заявки по UvdGuide.region + UvdGuide.district
-     * - role=local    видит заявки только по своему uvd_code
+     * SOS-заявки в пределах прав администратора.
+     * В каждой заявке также возвращается актуальный статус охранного ордера пользователя.
      */
     public function getRegionSosHistories(Request $request)
     {
@@ -27,24 +25,18 @@ class AdminSosHistoryController extends Controller
             $admin
         )
             ->latest()
-            ->get();
+            ->get()
+            ->map(fn (SosHistory $history) => $this->serializeSos($history))
+            ->values();
 
-        return response()->json([
-            'data' => $histories,
-        ]);
+        return response()->json(['data' => $histories]);
     }
 
-    /**
-     * Старый endpoint оставлен для совместимости: отмечает заявку обработанной.
-     */
     public function markAsDone($id)
     {
         return $this->changeStatus($id, 'done');
     }
 
-    /**
-     * Новый endpoint: позволяет администратору менять статус заявки.
-     */
     public function updateStatus(Request $request, $id)
     {
         $validated = $request->validate([
@@ -57,7 +49,6 @@ class AdminSosHistoryController extends Controller
     private function changeStatus($id, string $status)
     {
         $admin = Auth::user();
-
         $sos = SosHistory::with(['user.uvdGuide'])->find($id);
 
         if (!$sos) {
@@ -74,8 +65,86 @@ class AdminSosHistoryController extends Controller
 
         return response()->json([
             'message' => 'Статус заявки обновлён',
-            'data' => $sos,
+            'data' => $this->serializeSos($sos),
         ]);
+    }
+
+    private function serializeSos(SosHistory $history): array
+    {
+        return array_merge($history->toArray(), [
+            'security_order_status' => $this->securityOrderStatus($history->user),
+        ]);
+    }
+
+    private function securityOrderStatus(?User $user): array
+    {
+        if (!$user) {
+            return [
+                'code' => 'unknown',
+                'label' => 'ДАННЫЕ ПОЛЬЗОВАТЕЛЯ НЕ НАЙДЕНЫ',
+                'order_number' => null,
+                'order_registration_date' => null,
+                'expires_at' => null,
+                'days_remaining' => null,
+            ];
+        }
+
+        if ($user->kamkor_sync_status === 'failed') {
+            return [
+                'code' => 'sync_failed',
+                'label' => 'НЕ УДАЛОСЬ СИНХРОНИЗИРОВАТЬ С АИС',
+                'order_number' => $user->orderNumber,
+                'order_registration_date' => $user->order_registration_date,
+                'expires_at' => null,
+                'days_remaining' => $user->daysRemaining,
+            ];
+        }
+
+        if (!$user->order_registration_date || !$user->orderNumber) {
+            return [
+                'code' => 'expired',
+                'label' => 'СРОК ОХРАННОГО ОРДЕРА ИСТЁК',
+                'order_number' => $user->orderNumber,
+                'order_registration_date' => $user->order_registration_date,
+                'expires_at' => null,
+                'days_remaining' => $user->daysRemaining,
+            ];
+        }
+
+        try {
+            $expiresAt = Carbon::parse($user->order_registration_date)->startOfDay()->addDays(30);
+            $isExpired = $expiresAt->lessThanOrEqualTo(now())
+                || ($user->daysRemaining !== null && (int) $user->daysRemaining <= 0);
+
+            if ($isExpired) {
+                return [
+                    'code' => 'expired',
+                    'label' => 'СРОК ОХРАННОГО ОРДЕРА ИСТЁК',
+                    'order_number' => $user->orderNumber,
+                    'order_registration_date' => $user->order_registration_date,
+                    'expires_at' => $expiresAt->toDateString(),
+                    'days_remaining' => $user->daysRemaining,
+                ];
+            }
+
+            return [
+                'code' => 'active',
+                'label' => 'ОРДЕР ДЕЙСТВУЕТ',
+                'order_number' => $user->orderNumber,
+                'order_registration_date' => $user->order_registration_date,
+                'expires_at' => $expiresAt->toDateString(),
+                'days_remaining' => $user->daysRemaining,
+            ];
+        } catch (\Throwable $exception) {
+            return [
+                'code' => 'expired',
+                'label' => 'СРОК ОХРАННОГО ОРДЕРА ИСТЁК',
+                'order_number' => $user->orderNumber,
+                'order_registration_date' => $user->order_registration_date,
+                'expires_at' => null,
+                'days_remaining' => $user->daysRemaining,
+            ];
+        }
     }
 
     private function applyAdminAccessScope($query, $admin)
@@ -149,11 +218,6 @@ class AdminSosHistoryController extends Controller
 
     private function allowedStatuses(): array
     {
-        return [
-            'pending',
-            'in_progress',
-            'done',
-            'cancelled',
-        ];
+        return ['pending', 'in_progress', 'done', 'cancelled'];
     }
 }
