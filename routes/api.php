@@ -24,6 +24,7 @@ Route::post('/user/logout', [AuthController::class, 'logout'])->middleware('auth
 
 Route::post('/sos', [SosButtonController::class, 'sendAlert'])->middleware('auth:sanctum');
 Route::post('/sos/{id}/audio', [SosButtonController::class, 'addAudio'])->middleware('auth:sanctum');
+Route::post('/sos/{id}/location', [SosButtonController::class, 'updateLocation'])->middleware('auth:sanctum');
 
 Route::get('/sos', [SosHistoryController::class, 'index'])->middleware('auth:sanctum');
 Route::get('/sos/{id}', [SosHistoryController::class, 'show'])->middleware('auth:sanctum');
@@ -51,6 +52,7 @@ Route::post('/admin-user/auth', [AdminAuthController::class, 'auth']);
 Route::middleware('auth:sanctum')->group(function (): void {
     Route::get('/admin-user/me', [AdminAuthController::class, 'me']);
     Route::get('/admin/sos-histories', [AdminSosHistoryController::class, 'getRegionSosHistories']);
+    Route::get('/admin/sos-histories/{id}/audio', [AdminSosHistoryController::class, 'streamAudio']);
     Route::put('/admin/sos-histories/{id}/done', [AdminSosHistoryController::class, 'markAsDone']);
     Route::put('/admin/sos-histories/{id}/status', [AdminSosHistoryController::class, 'updateStatus']);
 

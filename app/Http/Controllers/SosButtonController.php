@@ -19,7 +19,7 @@ class SosButtonController extends Controller
 
         $validated = $request->validate([
             'geolocation' => [
-                'required'
+                'required',
             ],
         ]);
 
@@ -27,7 +27,8 @@ class SosButtonController extends Controller
             'user_id' => $user->id,
             'geo' => $validated['geolocation'],
             'audio_file' => null,
-            'status' => 'pending'
+            'status' => 'pending',
+            'last_location_at' => now(),
         ]);
 
         $template = TemplateMessage::where('user_id', $user->id)->first();
@@ -49,13 +50,60 @@ class SosButtonController extends Controller
         return response()->json([
             'success' => true,
             'sos_id' => $sosHistory->id,
-            'message' => 'SOS-сигнал отправлен'
+            'status' => $sosHistory->status,
+            'message' => 'SOS-сигнал отправлен',
+        ]);
+    }
+
+    /**
+     * Обновляет последнюю точку SOS. PWA вызывает этот метод раз в 15 секунд,
+     * пока заявка имеет активный статус.
+     */
+    public function updateLocation(Request $request, $sosId)
+    {
+        $user = Auth::guard('sanctum')->user();
+        if (!$user) {
+            return response()->json(['error' => 'Unauthorized'], 401);
+        }
+
+        $sosHistory = SosHistory::where('id', $sosId)
+            ->where('user_id', $user->id)
+            ->firstOrFail();
+
+        if (!in_array($sosHistory->status, ['pending', 'in_progress'], true)) {
+            return response()->json([
+                'message' => 'Заявка уже завершена или отменена. Обновление геолокации остановлено.',
+                'status' => $sosHistory->status,
+            ], 409);
+        }
+
+        $validated = $request->validate([
+            'latitude' => ['required', 'numeric', 'between:-90,90'],
+            'longitude' => ['required', 'numeric', 'between:-180,180'],
+            'accuracy' => ['nullable', 'numeric', 'min:0', 'max:100000'],
+            'captured_at' => ['nullable', 'date'],
+        ]);
+
+        $latitude = (float) $validated['latitude'];
+        $longitude = (float) $validated['longitude'];
+
+        $sosHistory->update([
+            'geo' => sprintf('%.7F, %.7F', $latitude, $longitude),
+            'location_accuracy' => $validated['accuracy'] ?? null,
+            'last_location_at' => $validated['captured_at'] ?? now(),
+        ]);
+
+        return response()->json([
+            'success' => true,
+            'status' => $sosHistory->status,
+            'geo' => $sosHistory->geo,
+            'last_location_at' => optional($sosHistory->last_location_at)->toIso8601String(),
         ]);
     }
 
     protected function sendSMS(string $phoneNumber, string $message): void
     {
-        //Добавить отправку СМС исходя от выбранного оператора (Никита Мобайл)
+        // Добавить отправку СМС исходя от выбранного оператора (Никита Мобайл)
     }
 
     public function addAudio(Request $request, $sosId)
@@ -69,21 +117,26 @@ class SosButtonController extends Controller
             ->where('user_id', $user->id)
             ->firstOrFail();
 
+        if (!in_array($sosHistory->status, ['pending', 'in_progress'], true)) {
+            return response()->json([
+                'message' => 'Заявка уже завершена или отменена. Аудиозапись не принимается.',
+                'status' => $sosHistory->status,
+            ], 409);
+        }
+
         $request->validate([
-            'audio' => 'required|file|mimes:mp3,wav,aac,ogg'
+            // Chrome/Android чаще всего передаёт запись как audio/webm.
+            'audio' => 'required|file|max:10240|mimes:webm,ogg,mp3,wav,aac,m4a,mp4',
         ]);
 
-        $path = $request->file('audio')->store(
-            "sos_audio/{$user->id}",
-            'public'
-        );
+        // Диск local соответствует storage/app: файл не публикуется через /storage.
+        $path = $request->file('audio')->store("sos_audio/{$user->id}", 'local');
 
         $sosHistory->update(['audio_file' => $path]);
 
         return response()->json([
             'success' => true,
-            'audio_url' => asset("storage/$path"),
-            'message' => 'Аудиофайл успешно сохранён'
+            'message' => 'Аудиозапись сохранена и доступна только уполномоченным сотрудникам.',
         ]);
     }
 }

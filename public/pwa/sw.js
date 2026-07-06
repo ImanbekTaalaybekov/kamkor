@@ -1,4 +1,4 @@
-const CACHE_NAME = 'kamkor-pwa-v8-personal-install';
+const CACHE_NAME = 'kamkor-pwa-v13-audio-5min';
 const APP_SHELL = [
   '/pwa/',
   '/pwa/index.html',
@@ -7,7 +7,7 @@ const APP_SHELL = [
   '/pwa/install-prompt.js',
   '/pwa/install-prompt.css',
   '/pwa/access-link-gate.js',
-  '/pwa/assets/index-phone-access-v2.js',
+  '/pwa/assets/index-phone-access-v2.js?v=audio-5min-v13',
   '/pwa/assets/index-CUeBuOXi.css',
   '/pwa/icons/icon-192.png',
   '/pwa/icons/icon-512.png'

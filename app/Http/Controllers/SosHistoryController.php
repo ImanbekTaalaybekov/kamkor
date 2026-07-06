@@ -19,7 +19,6 @@ class SosHistoryController extends Controller
                 return [
                     'id' => $item->id,
                     'geo' => $item->geo,
-                    'audio_url' => $item->audio_file ? asset("storage/{$item->audio_file}") : null,
                     'created_at' => $item->created_at->toDateTimeString()
                 ];
             })
@@ -35,7 +34,6 @@ class SosHistoryController extends Controller
             'id' => $sos->id,
             'created_at' => $sos->created_at,
             'geo' => $sos->geo,
-            'audio' => $sos->audio_file ? asset("storage/{$sos->audio_file}") : null
         ]);
     }
 }
