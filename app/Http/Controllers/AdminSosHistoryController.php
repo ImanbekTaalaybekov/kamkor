@@ -2,12 +2,14 @@
 
 namespace App\Http\Controllers;
 
+use App\Models\AdminUser;
 use App\Models\SosHistory;
 use App\Models\User;
 use App\Models\UvdGuide;
 use Carbon\Carbon;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
+use Illuminate\Support\Facades\Storage;
 use Illuminate\Validation\Rule;
 
 class AdminSosHistoryController extends Controller
@@ -30,6 +32,52 @@ class AdminSosHistoryController extends Controller
             ->values();
 
         return response()->json(['data' => $histories]);
+    }
+
+    /**
+     * Аудиозапись выдаётся только авторизованному администратору, который имеет
+     * доступ к заявке по своему региону/району/УВД. Пользовательский API путь
+     * к файлу не получает.
+     */
+    public function streamAudio(Request $request, $id)
+    {
+        $admin = $request->user();
+        if (!$admin instanceof AdminUser) {
+            return response()->json(['message' => 'Доступ разрешён только администраторам.'], 403);
+        }
+
+        $sos = SosHistory::with(['user.uvdGuide'])->find($id);
+        if (!$sos) {
+            return response()->json(['message' => 'Заявка не найдена'], 404);
+        }
+
+        if (!$this->adminCanAccessSos($admin, $sos)) {
+            return response()->json(['message' => 'Нет доступа к этой аудиозаписи'], 403);
+        }
+
+        if (!$sos->audio_file) {
+            return response()->json(['message' => 'Аудиозапись отсутствует'], 404);
+        }
+
+        // Новые записи сохраняются в закрытом local-диске. Public fallback
+        // оставлен только для старых записей, созданных до этой доработки.
+        $disk = Storage::disk('local');
+        if (!$disk->exists($sos->audio_file)) {
+            $disk = Storage::disk('public');
+        }
+
+        if (!$disk->exists($sos->audio_file)) {
+            return response()->json(['message' => 'Файл аудиозаписи не найден'], 404);
+        }
+
+        $fileName = basename($sos->audio_file);
+        $mimeType = $disk->mimeType($sos->audio_file) ?: 'application/octet-stream';
+
+        return response()->file($disk->path($sos->audio_file), [
+            'Content-Type' => $mimeType,
+            'Content-Disposition' => 'inline; filename="' . $fileName . '"',
+            'Cache-Control' => 'private, no-store',
+        ]);
     }
 
     public function markAsDone($id)
