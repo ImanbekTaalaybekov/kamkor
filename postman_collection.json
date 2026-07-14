@@ -1,0 +1,1956 @@
+{
+  "info": {
+    "_postman_id": "5d618ae7-51be-48dc-84c1-37cd327e2f2d",
+    "name": "KAMKOR API — Документация и тесты",
+    "description": "# KAMKOR API\n\nКоллекция составлена по текущим маршрутам Laravel `routes/api.php` и контроллерам проекта KAMKOR.\n\n## Быстрый старт\n1. Импортируйте этот JSON в Postman.\n2. В переменных коллекции укажите `base_url` (по умолчанию: `https://kamkor.mvd.kg`).\n3. Для пользовательских методов: сначала выполните **Проверить персональную ссылку**, затем **Вход пользователя по QR/персональной ссылке и ПИН**. Токен будет автоматически записан в `user_token`.\n4. Для административных методов: выполните **Вход администратора**. Токен будет автоматически записан в `admin_token`.\n5. Для SOS: после **Создать SOS** идентификатор будет сохранён в `sos_id` и будет использован в следующих запросах.\n\n## Авторизация\n- Пользовательские защищённые методы: `Authorization: Bearer {{user_token}}`.\n- Административные защищённые методы: `Authorization: Bearer {{admin_token}}`.\n- Токены выпускаются Laravel Sanctum.\n\n## Важные правила\n- Персональная ссылка/QR — конфиденциальна. Не вставляйте действующий `access_token` в публичные коллекции или скриншоты.\n- Аудиофайл передаётся как `multipart/form-data`, поддерживаются: `webm`, `ogg`, `mp3`, `wav`, `aac`, `m4a`, `mp4`; текущий backend-лимит — 10 МБ.\n- Геолокация обновляется отдельным методом, пока статус SOS: `pending` или `in_progress`. При `done`/`cancelled` API отвечает `409`, и клиент должен остановить отправку координат.\n- В пользовательской истории аудио намеренно не возвращается. Прослушивание доступно только авторизованному администратору в пределах его территории.\n\n- Версии мобильных приложений: `GET /api/app-version` и `POST /api/app-version`; поддерживаются платформы `android` и `ios`.\n\n## Статусы SOS\n`pending`, `in_progress`, `done`, `cancelled`.",
+    "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
+  },
+  "variable": [
+    {
+      "key": "base_url",
+      "value": "https://kamkor.mvd.kg",
+      "type": "string",
+      "description": "Базовый URL приложения без завершающего слеша."
+    },
+    {
+      "key": "access_token",
+      "value": "",
+      "type": "string",
+      "description": "Одноразовый токен из персональной QR-ссылки: /pwa/?access=..."
+    },
+    {
+      "key": "pin",
+      "value": "",
+      "type": "string",
+      "description": "ПИН пользователя, выданный при создании доступа."
+    },
+    {
+      "key": "device",
+      "value": "postman",
+      "type": "string",
+      "description": "Произвольное имя устройства при пользовательском входе."
+    },
+    {
+      "key": "user_token",
+      "value": "",
+      "type": "string",
+      "description": "Sanctum-токен пользователя. Автоматически сохраняется после пользовательского входа."
+    },
+    {
+      "key": "admin_name",
+      "value": "",
+      "type": "string",
+      "description": "Логин администратора."
+    },
+    {
+      "key": "admin_password",
+      "value": "",
+      "type": "string",
+      "description": "Пароль администратора. Не храните реальный пароль в экспортируемой коллекции."
+    },
+    {
+      "key": "admin_token",
+      "value": "",
+      "type": "string",
+      "description": "Sanctum-токен администратора. Автоматически сохраняется после административного входа."
+    },
+    {
+      "key": "sos_id",
+      "value": "1",
+      "type": "string",
+      "description": "ID SOS-заявки. Автоматически обновляется после POST /api/sos."
+    },
+    {
+      "key": "user_id",
+      "value": "1",
+      "type": "string",
+      "description": "ID пользователя для административных операций."
+    },
+    {
+      "key": "contact_id",
+      "value": "1",
+      "type": "string",
+      "description": "ID доверенного контакта."
+    },
+    {
+      "key": "latitude",
+      "value": "42.8746",
+      "type": "string",
+      "description": "Широта для теста геолокации."
+    },
+    {
+      "key": "longitude",
+      "value": "74.5698",
+      "type": "string",
+      "description": "Долгота для теста геолокации."
+    },
+    {
+      "key": "accuracy",
+      "value": "12",
+      "type": "string",
+      "description": "Точность GPS в метрах."
+    },
+    {
+      "key": "captured_at",
+      "value": "",
+      "type": "string",
+      "description": "Время получения координаты. Перед запросом обновляется автоматически в ISO-8601."
+    },
+    {
+      "key": "audio_file_path",
+      "value": "",
+      "type": "string",
+      "description": "Абсолютный локальный путь к тестовому аудиофайлу для Postman Desktop Agent."
+    },
+    {
+      "key": "sos_status",
+      "value": "in_progress",
+      "type": "string",
+      "description": "Новый статус для PATCH статуса SOS: pending, in_progress, done, cancelled."
+    },
+    {
+      "key": "app_platform",
+      "value": "android",
+      "type": "string",
+      "description": "Платформа мобильного приложения: android или ios."
+    },
+    {
+      "key": "app_version",
+      "value": "1.0.0",
+      "type": "string",
+      "description": "Актуальная версия мобильного приложения для выбранной платформы."
+    }
+  ],
+  "item": [
+    {
+      "name": "01 — Пользователь: QR/персональная ссылка и сессия",
+      "description": "Методы пользовательского входа. Доступ создаётся администратором: пользователь получает персональную ссылку или QR-код с `access_token` и вводит свой ПИН.",
+      "item": [
+        {
+          "name": "Проверить персональную ссылку / QR",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Accept",
+                "value": "application/json",
+                "type": "text"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json",
+                "type": "text"
+              }
+            ],
+            "url": "{{base_url}}/api/user/access-link/validate",
+            "description": "Проверяет только действительность `access_token` из QR/персональной ссылки. ПИН на этом шаге не передаётся.\n\n**Успех:** `200 {\"valid\": true}`.\n**Ошибка:** `404`, если ссылка недействительна.\n\nИспользуйте перед показом формы ввода ПИН в PWA.",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"access_token\": \"{{access_token}}\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "response": [
+            {
+              "name": "Успешная проверка",
+              "originalRequest": {},
+              "status": "OK",
+              "code": 200,
+              "_postman_previewlanguage": "json",
+              "header": [
+                {
+                  "key": "Content-Type",
+                  "value": "application/json"
+                }
+              ],
+              "cookie": [],
+              "body": "{\n  \"valid\": true\n}"
+            }
+          ]
+        },
+        {
+          "name": "Вход пользователя по QR/персональной ссылке и ПИН",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Accept",
+                "value": "application/json",
+                "type": "text"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json",
+                "type": "text"
+              }
+            ],
+            "url": "{{base_url}}/api/user/access-link/auth",
+            "description": "Авторизует пользователя по персональному `access_token` и `pin`. В успешном ответе возвращает токен Sanctum.\n\n**Автоматизация:** тест коллекции сохраняет ответ `auth_token` в переменную `user_token`.\n**Ошибка:** `401`, если ссылка или ПИН неверны.",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"access_token\": \"{{access_token}}\",\n  \"pin\": \"{{pin}}\",\n  \"device\": \"{{device}}\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "response": [
+            {
+              "name": "Успешный вход",
+              "originalRequest": {},
+              "status": "OK",
+              "code": 200,
+              "_postman_previewlanguage": "json",
+              "header": [
+                {
+                  "key": "Content-Type",
+                  "value": "application/json"
+                }
+              ],
+              "cookie": [],
+              "body": "{\n  \"auth_token\": \"1|example_sanctum_token\",\n  \"user\": {\n    \"id\": 1,\n    \"name\": \"Алия\",\n    \"surname\": \"Иманова\",\n    \"phone_number\": \"+996 (555) 123-456\",\n    \"pin\": \"1234\",\n    \"region\": \"г. Бишкек\",\n    \"uvd_code\": \"0101\",\n    \"address\": \"г. Бишкек\",\n    \"icon\": null\n  }\n}"
+            }
+          ],
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"Ответ содержит auth_token\", function () { pm.expect(pm.response.code).to.be.oneOf([200, 201]); });",
+                  "const data = pm.response.json();",
+                  "if (data.auth_token) { pm.collectionVariables.set(\"user_token\", data.auth_token); }",
+                  "if (data.user && data.user.id) { pm.collectionVariables.set(\"user_id\", String(data.user.id)); }"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Получить профиль текущего пользователя",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Accept",
+                "value": "application/json",
+                "type": "text"
+              }
+            ],
+            "url": "{{base_url}}/api/user/me",
+            "description": "Возвращает профиль пользователя текущего токена и признак доступности SOS. SOS сейчас доступен независимо от срока охранного ордера.",
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{user_token}}",
+                  "type": "string"
+                }
+              ]
+            }
+          },
+          "response": [
+            {
+              "name": "Профиль пользователя",
+              "originalRequest": {},
+              "status": "OK",
+              "code": 200,
+              "_postman_previewlanguage": "json",
+              "header": [
+                {
+                  "key": "Content-Type",
+                  "value": "application/json"
+                }
+              ],
+              "cookie": [],
+              "body": "{\n  \"user\": {\n    \"id\": 1,\n    \"name\": \"Алия\",\n    \"surname\": \"Иманова\",\n    \"phone_number\": \"+996 (555) 123-456\",\n    \"pin\": \"1234\",\n    \"region\": \"г. Бишкек\",\n    \"uvd_code\": \"0101\",\n    \"address\": \"г. Бишкек\",\n    \"icon\": null\n  },\n  \"sos_button_available\": true\n}"
+            }
+          ]
+        },
+        {
+          "name": "Обновить профиль текущего пользователя",
+          "request": {
+            "method": "PUT",
+            "header": [
+              {
+                "key": "Accept",
+                "value": "application/json",
+                "type": "text"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json",
+                "type": "text"
+              }
+            ],
+            "url": "{{base_url}}/api/user/update",
+            "description": "Частично обновляет профиль текущего пользователя. Все поля необязательны; передаются только изменяемые значения.\n\nРазрешённые поля: `name`, `surname`, `phone_number`, `address`, `icon`.",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"name\": \"Алия\",\n  \"surname\": \"Иманова\",\n  \"phone_number\": \"+996 (555) 123-456\",\n  \"address\": \"г. Бишкек, ул. Пример, 1\",\n  \"icon\": \"avatar-1\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{user_token}}",
+                  "type": "string"
+                }
+              ]
+            }
+          },
+          "response": [
+            {
+              "name": "Профиль обновлён",
+              "originalRequest": {},
+              "status": "OK",
+              "code": 200,
+              "_postman_previewlanguage": "json",
+              "header": [
+                {
+                  "key": "Content-Type",
+                  "value": "application/json"
+                }
+              ],
+              "cookie": [],
+              "body": "{\n  \"user\": {\n    \"id\": 1,\n    \"name\": \"Алия\",\n    \"surname\": \"Иманова\",\n    \"phone_number\": \"+996 (555) 123-456\",\n    \"pin\": \"1234\",\n    \"region\": \"г. Бишкек\",\n    \"uvd_code\": \"0101\",\n    \"address\": \"г. Бишкек, ул. Пример, 1\",\n    \"icon\": \"avatar-1\"\n  }\n}"
+            }
+          ]
+        },
+        {
+          "name": "Выйти из текущего устройства",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Accept",
+                "value": "application/json",
+                "type": "text"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json",
+                "type": "text"
+              }
+            ],
+            "url": "{{base_url}}/api/user/logout",
+            "description": "Удаляет только текущий Sanctum-токен устройства. Другие активные устройства пользователя не отключаются.",
+            "body": {
+              "mode": "raw",
+              "raw": "{}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{user_token}}",
+                  "type": "string"
+                }
+              ]
+            }
+          },
+          "response": [
+            {
+              "name": "Сеанс завершён",
+              "originalRequest": {},
+              "status": "OK",
+              "code": 200,
+              "_postman_previewlanguage": "json",
+              "header": [
+                {
+                  "key": "Content-Type",
+                  "value": "application/json"
+                }
+              ],
+              "cookie": [],
+              "body": "{\n  \"message\": \"Сессия на этом устройстве завершена.\"\n}"
+            }
+          ],
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "if (pm.response.code === 200) { pm.collectionVariables.unset(\"user_token\"); }"
+                ]
+              }
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "name": "02 — SOS: создание, live-геолокация и аудио",
+      "description": "Поток SOS: 1) создать заявку; 2) каждые 15 секунд обновлять координаты, пока заявка активна; 3) загрузить аудио как multipart/form-data.\n\nВ реальной PWA аудиозапись запускается автоматически после SOS, а в Postman эти действия выполняются отдельными запросами для тестирования API.",
+      "item": [
+        {
+          "name": "Создать SOS-заявку",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Accept",
+                "value": "application/json",
+                "type": "text"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json",
+                "type": "text"
+              }
+            ],
+            "url": "{{base_url}}/api/sos",
+            "description": "Создаёт SOS-заявку со статусом `pending`, сохраняет начальную геолокацию и инициирует отправку сообщения доверенным контактам.\n\nПоле `geolocation` обязательно. Backend сохраняет строковое представление координат.\n\n**Автоматизация:** идентификатор ответа `sos_id` сохраняется в переменную `sos_id`.",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"geolocation\": \"{{latitude}}, {{longitude}}\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{user_token}}",
+                  "type": "string"
+                }
+              ]
+            }
+          },
+          "response": [
+            {
+              "name": "SOS создан",
+              "originalRequest": {},
+              "status": "OK",
+              "code": 200,
+              "_postman_previewlanguage": "json",
+              "header": [
+                {
+                  "key": "Content-Type",
+                  "value": "application/json"
+                }
+              ],
+              "cookie": [],
+              "body": "{\n  \"success\": true,\n  \"sos_id\": 123,\n  \"status\": \"pending\",\n  \"message\": \"SOS-сигнал отправлен\"\n}"
+            }
+          ],
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"SOS создан\", function () { pm.expect(pm.response.code).to.eql(200); });",
+                  "const data = pm.response.json();",
+                  "if (data.sos_id) { pm.collectionVariables.set(\"sos_id\", String(data.sos_id)); }"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Обновить текущую геолокацию SOS",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Accept",
+                "value": "application/json",
+                "type": "text"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json",
+                "type": "text"
+              }
+            ],
+            "url": "{{base_url}}/api/sos/{{sos_id}}/location",
+            "description": "Обновляет последнюю координату SOS. В PWA вызывается раз в 15 секунд.\n\n**Разрешённые статусы:** `pending`, `in_progress`.\n**Важно:** для `done` и `cancelled` API возвращает `409` и клиент должен остановить геотрекинг.\n\nПоля: `latitude` [-90; 90], `longitude` [-180; 180], опционально `accuracy` и `captured_at`.",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"latitude\": \"{{latitude}}\",\n  \"longitude\": \"{{longitude}}\",\n  \"accuracy\": \"{{accuracy}}\",\n  \"captured_at\": \"{{captured_at}}\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{user_token}}",
+                  "type": "string"
+                }
+              ]
+            }
+          },
+          "response": [
+            {
+              "name": "Координаты обновлены",
+              "originalRequest": {},
+              "status": "OK",
+              "code": 200,
+              "_postman_previewlanguage": "json",
+              "header": [
+                {
+                  "key": "Content-Type",
+                  "value": "application/json"
+                }
+              ],
+              "cookie": [],
+              "body": "{\n  \"success\": true,\n  \"status\": \"in_progress\",\n  \"geo\": \"42.8746000, 74.5698000\",\n  \"last_location_at\": \"2026-07-06T07:00:00+00:00\"\n}"
+            }
+          ],
+          "event": [
+            {
+              "listen": "prerequest",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.collectionVariables.set(\"captured_at\", new Date().toISOString());"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Загрузить аудиозапись SOS",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Accept",
+                "value": "application/json",
+                "type": "text"
+              }
+            ],
+            "url": "{{base_url}}/api/sos/{{sos_id}}/audio",
+            "description": "Загружает аудиозапись SOS в закрытое хранилище `storage/app/sos_audio`. Пользователь не получает прямой URL и не может прослушивать файл через историю.\n\n**Формат:** `multipart/form-data`, ключ файла — `audio`.\n**Форматы:** `webm`, `ogg`, `mp3`, `wav`, `aac`, `m4a`, `mp4`.\n**Лимит backend:** до 10 МБ.\n**Разрешённые статусы:** `pending`, `in_progress`; для завершённой/отменённой заявки — `409`.",
+            "body": {
+              "mode": "formdata",
+              "formdata": [
+                {
+                  "key": "audio",
+                  "type": "file",
+                  "src": "{{audio_file_path}}",
+                  "description": "Выберите тестовый файл. В Postman Desktop Agent укажите файл с поддерживаемым расширением."
+                }
+              ]
+            },
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{user_token}}",
+                  "type": "string"
+                }
+              ]
+            }
+          },
+          "response": [
+            {
+              "name": "Аудио принято",
+              "originalRequest": {},
+              "status": "OK",
+              "code": 200,
+              "_postman_previewlanguage": "json",
+              "header": [
+                {
+                  "key": "Content-Type",
+                  "value": "application/json"
+                }
+              ],
+              "cookie": [],
+              "body": "{\n  \"success\": true,\n  \"message\": \"Аудиозапись сохранена и доступна только уполномоченным сотрудникам.\"\n}"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "name": "03 — Пользователь: история SOS",
+      "description": "История доступна только владельцу SOS-заявки. Поля аудио намеренно не выдаются.",
+      "item": [
+        {
+          "name": "Получить историю SOS пользователя",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Accept",
+                "value": "application/json",
+                "type": "text"
+              }
+            ],
+            "url": "{{base_url}}/api/sos",
+            "description": "Возвращает список SOS текущего пользователя от новых к старым. В выдаче нет поля аудио и нет прямых URL файлов.",
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{user_token}}",
+                  "type": "string"
+                }
+              ]
+            }
+          },
+          "response": [
+            {
+              "name": "История SOS",
+              "originalRequest": {},
+              "status": "OK",
+              "code": 200,
+              "_postman_previewlanguage": "json",
+              "header": [
+                {
+                  "key": "Content-Type",
+                  "value": "application/json"
+                }
+              ],
+              "cookie": [],
+              "body": "{\n  \"success\": true,\n  \"data\": [\n    {\n      \"id\": 123,\n      \"geo\": \"42.8746000, 74.5698000\",\n      \"created_at\": \"2026-07-06 13:00:00\"\n    }\n  ]\n}"
+            }
+          ]
+        },
+        {
+          "name": "Получить одну SOS-заявку пользователя",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Accept",
+                "value": "application/json",
+                "type": "text"
+              }
+            ],
+            "url": "{{base_url}}/api/sos/{{sos_id}}",
+            "description": "Возвращает SOS только если она принадлежит текущему пользователю. Аудио и аудиоссылка намеренно не возвращаются.",
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{user_token}}",
+                  "type": "string"
+                }
+              ]
+            }
+          },
+          "response": [
+            {
+              "name": "SOS-заявка",
+              "originalRequest": {},
+              "status": "OK",
+              "code": 200,
+              "_postman_previewlanguage": "json",
+              "header": [
+                {
+                  "key": "Content-Type",
+                  "value": "application/json"
+                }
+              ],
+              "cookie": [],
+              "body": "{\n  \"id\": 123,\n  \"created_at\": \"2026-07-06T07:00:00.000000Z\",\n  \"geo\": \"42.8746000, 74.5698000\"\n}"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "name": "04 — Пользователь: доверенные контакты",
+      "description": "Контакты принадлежат текущему пользователю и используются при создании SOS. Уникальность номера контролируется в рамках одного пользователя.",
+      "item": [
+        {
+          "name": "Получить доверенные контакты",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Accept",
+                "value": "application/json",
+                "type": "text"
+              }
+            ],
+            "url": "{{base_url}}/api/my-contacts",
+            "description": "Возвращает контакты текущего пользователя, отсортированные по имени.",
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{user_token}}",
+                  "type": "string"
+                }
+              ]
+            }
+          },
+          "response": [
+            {
+              "name": "Список контактов",
+              "originalRequest": {},
+              "status": "OK",
+              "code": 200,
+              "_postman_previewlanguage": "json",
+              "header": [
+                {
+                  "key": "Content-Type",
+                  "value": "application/json"
+                }
+              ],
+              "cookie": [],
+              "body": "[\n  {\n    \"id\": 1,\n    \"name\": \"Айжан\",\n    \"phone_number\": \"+996555123456\"\n  }\n]"
+            }
+          ]
+        },
+        {
+          "name": "Добавить доверенный контакт",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Accept",
+                "value": "application/json",
+                "type": "text"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json",
+                "type": "text"
+              }
+            ],
+            "url": "{{base_url}}/api/my-contacts",
+            "description": "Создаёт доверенный контакт. Поля `name` и `phone_number` обязательны. Номер не должен дублироваться у того же пользователя.",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"name\": \"Айжан\",\n  \"phone_number\": \"+996555123456\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{user_token}}",
+                  "type": "string"
+                }
+              ]
+            }
+          },
+          "response": [
+            {
+              "name": "Контакт создан",
+              "originalRequest": {},
+              "status": "Created",
+              "code": 201,
+              "_postman_previewlanguage": "json",
+              "header": [
+                {
+                  "key": "Content-Type",
+                  "value": "application/json"
+                }
+              ],
+              "cookie": [],
+              "body": "{\n  \"id\": 1,\n  \"name\": \"Айжан\",\n  \"phone_number\": \"+996555123456\"\n}"
+            }
+          ],
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "const data = pm.response.json(); if (data.id) { pm.collectionVariables.set(\"contact_id\", String(data.id)); }"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Обновить доверенный контакт",
+          "request": {
+            "method": "PATCH",
+            "header": [
+              {
+                "key": "Accept",
+                "value": "application/json",
+                "type": "text"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json",
+                "type": "text"
+              }
+            ],
+            "url": "{{base_url}}/api/my-contacts/{{contact_id}}",
+            "description": "Частично обновляет контакт текущего пользователя. Можно передать только `name`, только `phone_number` или оба поля.",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"name\": \"Айжан К.\",\n  \"phone_number\": \"+996555123456\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{user_token}}",
+                  "type": "string"
+                }
+              ]
+            }
+          },
+          "response": [
+            {
+              "name": "Контакт обновлён",
+              "originalRequest": {},
+              "status": "OK",
+              "code": 200,
+              "_postman_previewlanguage": "json",
+              "header": [
+                {
+                  "key": "Content-Type",
+                  "value": "application/json"
+                }
+              ],
+              "cookie": [],
+              "body": "{\n  \"id\": 1,\n  \"name\": \"Айжан К.\",\n  \"phone_number\": \"+996555123456\"\n}"
+            }
+          ]
+        },
+        {
+          "name": "Удалить доверенный контакт",
+          "request": {
+            "method": "DELETE",
+            "header": [
+              {
+                "key": "Accept",
+                "value": "application/json",
+                "type": "text"
+              }
+            ],
+            "url": "{{base_url}}/api/my-contacts/{{contact_id}}",
+            "description": "Удаляет контакт, если он принадлежит текущему пользователю.",
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{user_token}}",
+                  "type": "string"
+                }
+              ]
+            }
+          },
+          "response": [
+            {
+              "name": "Контакт удалён",
+              "originalRequest": {},
+              "status": "OK",
+              "code": 200,
+              "_postman_previewlanguage": "json",
+              "header": [
+                {
+                  "key": "Content-Type",
+                  "value": "application/json"
+                }
+              ],
+              "cookie": [],
+              "body": "{\n  \"message\": \"Контакт удален\"\n}"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "name": "05 — Пользователь: шаблон SOS-сообщения",
+      "description": "Шаблон создаётся автоматически при первом GET. Во время SOS `message_text` объединяется с геоподписью.",
+      "item": [
+        {
+          "name": "Получить шаблон SOS-сообщения",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Accept",
+                "value": "application/json",
+                "type": "text"
+              }
+            ],
+            "url": "{{base_url}}/api/message-template",
+            "description": "Возвращает шаблон текущего пользователя. Если шаблона ещё нет — создаёт значения по умолчанию: `Помогите, я в беде!` и `Я нахожусь тут`.",
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{user_token}}",
+                  "type": "string"
+                }
+              ]
+            }
+          },
+          "response": [
+            {
+              "name": "Шаблон сообщения",
+              "originalRequest": {},
+              "status": "OK",
+              "code": 200,
+              "_postman_previewlanguage": "json",
+              "header": [
+                {
+                  "key": "Content-Type",
+                  "value": "application/json"
+                }
+              ],
+              "cookie": [],
+              "body": "{\n  \"message_text\": \"Помогите, я в беде!\",\n  \"geo_signature\": \"Я нахожусь тут\"\n}"
+            }
+          ]
+        },
+        {
+          "name": "Обновить шаблон SOS-сообщения",
+          "request": {
+            "method": "PUT",
+            "header": [
+              {
+                "key": "Accept",
+                "value": "application/json",
+                "type": "text"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json",
+                "type": "text"
+              }
+            ],
+            "url": "{{base_url}}/api/message-template",
+            "description": "Создаёт или обновляет шаблон текущего пользователя. `message_text` максимум 500 символов; `geo_signature` максимум 200. В `geo_signature` можно использовать `{geo}`, который будет заменён координатами SOS.",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"message_text\": \"Мне нужна помощь.\",\n  \"geo_signature\": \"Моё местоположение: https://maps.google.com/?q={geo}\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{user_token}}",
+                  "type": "string"
+                }
+              ]
+            }
+          },
+          "response": [
+            {
+              "name": "Шаблон обновлён",
+              "originalRequest": {},
+              "status": "OK",
+              "code": 200,
+              "_postman_previewlanguage": "json",
+              "header": [
+                {
+                  "key": "Content-Type",
+                  "value": "application/json"
+                }
+              ],
+              "cookie": [],
+              "body": "{\n  \"success\": true,\n  \"message\": \"Шаблон обновлен\"\n}"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "name": "06 — Открытая справочная информация",
+      "description": "Эти методы не требуют Bearer-токена. Они возвращают данные из справочных таблиц.",
+      "item": [
+        {
+          "name": "Список кризисных центров",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Accept",
+                "value": "application/json",
+                "type": "text"
+              }
+            ],
+            "url": "{{base_url}}/api/crisis-centers",
+            "description": "Возвращает список: кризисный центр. Авторизация не требуется."
+          },
+          "response": [
+            {
+              "name": "Пример ответа",
+              "originalRequest": {},
+              "status": "OK",
+              "code": 200,
+              "_postman_previewlanguage": "json",
+              "header": [
+                {
+                  "key": "Content-Type",
+                  "value": "application/json"
+                }
+              ],
+              "cookie": [],
+              "body": "[\n  {\n    \"id\": 1,\n    \"title\": \"Пример заголовка\",\n    \"content\": \"Текст материала\",\n    \"created_at\": \"2026-07-06T07:00:00.000000Z\"\n  }\n]"
+            }
+          ]
+        },
+        {
+          "name": "Получить: кризисный центр",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Accept",
+                "value": "application/json",
+                "type": "text"
+              }
+            ],
+            "url": "{{base_url}}/api/crisis-centers/1",
+            "description": "Возвращает один объект по ID. При отсутствии записи Laravel вернёт `404`. Замените `1` на нужный идентификатор."
+          },
+          "response": [
+            {
+              "name": "Пример ответа",
+              "originalRequest": {},
+              "status": "OK",
+              "code": 200,
+              "_postman_previewlanguage": "json",
+              "header": [
+                {
+                  "key": "Content-Type",
+                  "value": "application/json"
+                }
+              ],
+              "cookie": [],
+              "body": "{\n  \"id\": 1,\n  \"title\": \"Пример заголовка\",\n  \"content\": \"Текст материала\",\n  \"created_at\": \"2026-07-06T07:00:00.000000Z\"\n}"
+            }
+          ]
+        },
+        {
+          "name": "Список материалов психологической помощи",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Accept",
+                "value": "application/json",
+                "type": "text"
+              }
+            ],
+            "url": "{{base_url}}/api/psychological-help",
+            "description": "Возвращает список: материал. Авторизация не требуется."
+          },
+          "response": [
+            {
+              "name": "Пример ответа",
+              "originalRequest": {},
+              "status": "OK",
+              "code": 200,
+              "_postman_previewlanguage": "json",
+              "header": [
+                {
+                  "key": "Content-Type",
+                  "value": "application/json"
+                }
+              ],
+              "cookie": [],
+              "body": "[\n  {\n    \"id\": 1,\n    \"title\": \"Пример заголовка\",\n    \"content\": \"Текст материала\",\n    \"created_at\": \"2026-07-06T07:00:00.000000Z\"\n  }\n]"
+            }
+          ]
+        },
+        {
+          "name": "Получить: материал",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Accept",
+                "value": "application/json",
+                "type": "text"
+              }
+            ],
+            "url": "{{base_url}}/api/psychological-help/1",
+            "description": "Возвращает один объект по ID. При отсутствии записи Laravel вернёт `404`. Замените `1` на нужный идентификатор."
+          },
+          "response": [
+            {
+              "name": "Пример ответа",
+              "originalRequest": {},
+              "status": "OK",
+              "code": 200,
+              "_postman_previewlanguage": "json",
+              "header": [
+                {
+                  "key": "Content-Type",
+                  "value": "application/json"
+                }
+              ],
+              "cookie": [],
+              "body": "{\n  \"id\": 1,\n  \"title\": \"Пример заголовка\",\n  \"content\": \"Текст материала\",\n  \"created_at\": \"2026-07-06T07:00:00.000000Z\"\n}"
+            }
+          ]
+        },
+        {
+          "name": "Список экстренных инструкций",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Accept",
+                "value": "application/json",
+                "type": "text"
+              }
+            ],
+            "url": "{{base_url}}/api/emergency-instructions",
+            "description": "Возвращает список: инструкция. Авторизация не требуется."
+          },
+          "response": [
+            {
+              "name": "Пример ответа",
+              "originalRequest": {},
+              "status": "OK",
+              "code": 200,
+              "_postman_previewlanguage": "json",
+              "header": [
+                {
+                  "key": "Content-Type",
+                  "value": "application/json"
+                }
+              ],
+              "cookie": [],
+              "body": "[\n  {\n    \"id\": 1,\n    \"title\": \"Пример заголовка\",\n    \"content\": \"Текст материала\",\n    \"created_at\": \"2026-07-06T07:00:00.000000Z\"\n  }\n]"
+            }
+          ]
+        },
+        {
+          "name": "Получить: инструкция",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Accept",
+                "value": "application/json",
+                "type": "text"
+              }
+            ],
+            "url": "{{base_url}}/api/emergency-instructions/1",
+            "description": "Возвращает один объект по ID. При отсутствии записи Laravel вернёт `404`. Замените `1` на нужный идентификатор."
+          },
+          "response": [
+            {
+              "name": "Пример ответа",
+              "originalRequest": {},
+              "status": "OK",
+              "code": 200,
+              "_postman_previewlanguage": "json",
+              "header": [
+                {
+                  "key": "Content-Type",
+                  "value": "application/json"
+                }
+              ],
+              "cookie": [],
+              "body": "{\n  \"id\": 1,\n  \"title\": \"Пример заголовка\",\n  \"content\": \"Текст материала\",\n  \"created_at\": \"2026-07-06T07:00:00.000000Z\"\n}"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "name": "07 — Синхронизация и политика",
+      "description": "Служебные методы. Ручная синхронизация охранного ордера предназначена для диагностики; штатно она выполняется командой по расписанию.",
+      "item": [
+        {
+          "name": "Запустить синхронизацию охранного ордера для текущего пользователя",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Accept",
+                "value": "application/json",
+                "type": "text"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json",
+                "type": "text"
+              }
+            ],
+            "url": "{{base_url}}/api/update-from-kamkor",
+            "description": "Вручную запускает сервис синхронизации данных охранного ордера для текущего пользователя.\n\n**Коды:** `200`, если синхронизация успешна; `502`, если удалённый сервис АИС/Tunduk вернул ошибку. Авторизация пользователя обязательна.",
+            "body": {
+              "mode": "raw",
+              "raw": "{}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{user_token}}",
+                  "type": "string"
+                }
+              ]
+            }
+          },
+          "response": [
+            {
+              "name": "Пример успешного ответа",
+              "originalRequest": {},
+              "status": "OK",
+              "code": 200,
+              "_postman_previewlanguage": "json",
+              "header": [
+                {
+                  "key": "Content-Type",
+                  "value": "application/json"
+                }
+              ],
+              "cookie": [],
+              "body": "{\n  \"success\": true,\n  \"message\": \"Синхронизация выполнена\"\n}"
+            }
+          ]
+        },
+        {
+          "name": "Получить политику конфиденциальности",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Accept",
+                "value": "application/json",
+                "type": "text"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json",
+                "type": "text"
+              }
+            ],
+            "url": "{{base_url}}/api/privacy-policy",
+            "description": "Текущий маршрут реализован как POST и не требует авторизации. Возвращает все записи политики использования/конфиденциальности.",
+            "body": {
+              "mode": "raw",
+              "raw": "{}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "response": [
+            {
+              "name": "Политика",
+              "originalRequest": {},
+              "status": "OK",
+              "code": 200,
+              "_postman_previewlanguage": "json",
+              "header": [
+                {
+                  "key": "Content-Type",
+                  "value": "application/json"
+                }
+              ],
+              "cookie": [],
+              "body": "[\n  {\n    \"id\": 1,\n    \"title\": \"Политика конфиденциальности\",\n    \"text\": \"Текст политики\"\n  }\n]"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "name": "08 — Администратор: вход и SOS-заявки",
+      "description": "Методы требуют токен администратора. Права на SOS и аудио ограничиваются ролью администратора: `region`, `district` или `local`, а также привязкой к территории/УВД.",
+      "item": [
+        {
+          "name": "Вход администратора",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Accept",
+                "value": "application/json",
+                "type": "text"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json",
+                "type": "text"
+              }
+            ],
+            "url": "{{base_url}}/api/admin-user/auth",
+            "description": "Авторизует администратора по полям `name` и `password`.\n\n**Автоматизация:** ответ `token` сохраняется в `admin_token`.\n**Ошибка:** `401`, если имя или пароль неверны.",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"name\": \"{{admin_name}}\",\n  \"password\": \"{{admin_password}}\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "response": [
+            {
+              "name": "Успешный вход",
+              "originalRequest": {},
+              "status": "OK",
+              "code": 200,
+              "_postman_previewlanguage": "json",
+              "header": [
+                {
+                  "key": "Content-Type",
+                  "value": "application/json"
+                }
+              ],
+              "cookie": [],
+              "body": "{\n  \"message\": \"Login successful\",\n  \"token\": \"2|example_admin_sanctum_token\",\n  \"user\": {\n    \"id\": 1,\n    \"name\": \"admin\",\n    \"region\": \"г. Бишкек\",\n    \"district\": null,\n    \"uvd_code\": \"0101\",\n    \"role\": \"local\"\n  }\n}"
+            }
+          ],
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"Вход администратора успешен\", function () { pm.expect(pm.response.code).to.eql(200); });",
+                  "const data = pm.response.json();",
+                  "if (data.token) { pm.collectionVariables.set(\"admin_token\", data.token); }"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Профиль текущего администратора",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Accept",
+                "value": "application/json",
+                "type": "text"
+              }
+            ],
+            "url": "{{base_url}}/api/admin-user/me",
+            "description": "Возвращает объект администратора текущего токена.",
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{admin_token}}",
+                  "type": "string"
+                }
+              ]
+            }
+          },
+          "response": [
+            {
+              "name": "Профиль администратора",
+              "originalRequest": {},
+              "status": "OK",
+              "code": 200,
+              "_postman_previewlanguage": "json",
+              "header": [
+                {
+                  "key": "Content-Type",
+                  "value": "application/json"
+                }
+              ],
+              "cookie": [],
+              "body": "{\n  \"user\": {\n    \"id\": 1,\n    \"name\": \"admin\",\n    \"region\": \"г. Бишкек\",\n    \"district\": null,\n    \"uvd_code\": \"0101\",\n    \"role\": \"local\"\n  }\n}"
+            }
+          ]
+        },
+        {
+          "name": "Получить SOS-заявки в зоне доступа администратора",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Accept",
+                "value": "application/json",
+                "type": "text"
+              }
+            ],
+            "url": "{{base_url}}/api/admin/sos-histories",
+            "description": "Возвращает SOS-заявки в пределах прав администратора. Каждая запись включает данные SOS, связанную модель пользователя и поле `security_order_status` с состоянием охранного ордера.\n\nАдминистратор роли `local` видит только своё УВД; `district` — свой район; `region` — свой регион.",
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{admin_token}}",
+                  "type": "string"
+                }
+              ]
+            }
+          },
+          "response": [
+            {
+              "name": "Список SOS",
+              "originalRequest": {},
+              "status": "OK",
+              "code": 200,
+              "_postman_previewlanguage": "json",
+              "header": [
+                {
+                  "key": "Content-Type",
+                  "value": "application/json"
+                }
+              ],
+              "cookie": [],
+              "body": "{\n  \"data\": [\n    {\n      \"id\": 123,\n      \"user_id\": 1,\n      \"geo\": \"42.8746000, 74.5698000\",\n      \"audio_file\": \"sos_audio/1/recording.webm\",\n      \"status\": \"pending\",\n      \"location_accuracy\": 12.0,\n      \"last_location_at\": \"2026-07-06T07:00:00.000000Z\",\n      \"created_at\": \"2026-07-06T07:00:00.000000Z\",\n      \"updated_at\": \"2026-07-06T07:00:00.000000Z\",\n      \"user\": {\n        \"id\": 1,\n        \"name\": \"Алия\",\n        \"uvd_code\": \"0101\"\n      },\n      \"security_order_status\": {\n        \"code\": \"active\",\n        \"label\": \"ОРДЕР ДЕЙСТВУЕТ\",\n        \"order_number\": \"12345\",\n        \"order_registration_date\": \"2026-06-20\",\n        \"expires_at\": \"2026-07-20\",\n        \"days_remaining\": 14\n      }\n    }\n  ]\n}"
+            }
+          ]
+        },
+        {
+          "name": "Прослушать аудио SOS",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Accept",
+                "value": "application/json",
+                "type": "text"
+              }
+            ],
+            "url": "{{base_url}}/api/admin/sos-histories/{{sos_id}}/audio",
+            "description": "Возвращает бинарный аудиопоток (`Content-Disposition: inline`) только если администратор имеет доступ к SOS по своей территории.\n\nВ Postman используйте **Send and Download**, либо после ответа сохраните файл.\n\nОшибки: `403` — нет доступа; `404` — SOS/аудио/файл отсутствует.",
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{admin_token}}",
+                  "type": "string"
+                }
+              ]
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "Пометить SOS как завершённую",
+          "request": {
+            "method": "PUT",
+            "header": [
+              {
+                "key": "Accept",
+                "value": "application/json",
+                "type": "text"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json",
+                "type": "text"
+              }
+            ],
+            "url": "{{base_url}}/api/admin/sos-histories/{{sos_id}}/done",
+            "description": "Быстрый метод установки статуса `done`. Доступ ограничен территорией администратора.",
+            "body": {
+              "mode": "raw",
+              "raw": "{}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{admin_token}}",
+                  "type": "string"
+                }
+              ]
+            }
+          },
+          "response": [
+            {
+              "name": "Статус изменён",
+              "originalRequest": {},
+              "status": "OK",
+              "code": 200,
+              "_postman_previewlanguage": "json",
+              "header": [
+                {
+                  "key": "Content-Type",
+                  "value": "application/json"
+                }
+              ],
+              "cookie": [],
+              "body": "{\n  \"message\": \"Статус заявки обновлён\",\n  \"data\": {\n    \"id\": 123,\n    \"status\": \"done\"\n  }\n}"
+            }
+          ]
+        },
+        {
+          "name": "Изменить статус SOS",
+          "request": {
+            "method": "PUT",
+            "header": [
+              {
+                "key": "Accept",
+                "value": "application/json",
+                "type": "text"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json",
+                "type": "text"
+              }
+            ],
+            "url": "{{base_url}}/api/admin/sos-histories/{{sos_id}}/status",
+            "description": "Устанавливает статус SOS. Допустимые значения: `pending`, `in_progress`, `done`, `cancelled`.\n\nПосле `done` или `cancelled` PWA должна прекратить отправку геолокации и аудио: соответствующие пользовательские методы вернут `409`.",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"status\": \"{{sos_status}}\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{admin_token}}",
+                  "type": "string"
+                }
+              ]
+            }
+          },
+          "response": [
+            {
+              "name": "Статус изменён",
+              "originalRequest": {},
+              "status": "OK",
+              "code": 200,
+              "_postman_previewlanguage": "json",
+              "header": [
+                {
+                  "key": "Content-Type",
+                  "value": "application/json"
+                }
+              ],
+              "cookie": [],
+              "body": "{\n  \"message\": \"Статус заявки обновлён\",\n  \"data\": {\n    \"id\": 123,\n    \"status\": \"in_progress\"\n  }\n}"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "name": "09 — Администратор: управление пользователями",
+      "description": "Администратор создаёт пользователя, задаёт ПИН и получает персональную ссылку/QR. Код УВД берётся только из профиля администратора; запрос не принимает `uvd_code` из браузера.",
+      "item": [
+        {
+          "name": "Получить пользователей в зоне доступа",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Accept",
+                "value": "application/json",
+                "type": "text"
+              }
+            ],
+            "url": "{{base_url}}/api/admin/users",
+            "description": "Возвращает пользователей, доступных текущему администратору в зависимости от его роли/территории.",
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{admin_token}}",
+                  "type": "string"
+                }
+              ]
+            }
+          },
+          "response": [
+            {
+              "name": "Список пользователей",
+              "originalRequest": {},
+              "status": "OK",
+              "code": 200,
+              "_postman_previewlanguage": "json",
+              "header": [
+                {
+                  "key": "Content-Type",
+                  "value": "application/json"
+                }
+              ],
+              "cookie": [],
+              "body": "{\n  \"data\": [\n    {\n      \"id\": 1,\n      \"pin\": \"1234\",\n      \"name\": \"Алия\",\n      \"surname\": \"Иманова\",\n      \"phone_number\": \"+996 (555) 123-456\",\n      \"address\": \"г. Бишкек\",\n      \"region\": \"г. Бишкек\",\n      \"district\": \"Первомайский\",\n      \"uvd_code\": \"0101\",\n      \"order_registration_date\": \"2026-06-20\",\n      \"orderNumber\": \"12345\",\n      \"daysRemaining\": 14,\n      \"kamkor_sync_status\": \"success\",\n      \"kamkor_last_synced_at\": \"2026-07-06T07:00:00+00:00\",\n      \"kamkor_sync_error\": null,\n      \"order_warning\": null,\n      \"access_link_created_at\": \"2026-07-06T07:00:00+00:00\",\n      \"created_at\": \"2026-07-06T07:00:00+00:00\"\n    }\n  ]\n}"
+            }
+          ]
+        },
+        {
+          "name": "Создать пользователя и получить персональную ссылку",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Accept",
+                "value": "application/json",
+                "type": "text"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json",
+                "type": "text"
+              }
+            ],
+            "url": "{{base_url}}/api/admin/users",
+            "description": "Создаёт пользователя. `pin` обязателен и должен быть уникальным. Поля `name`, `surname`, `phone_number`, `address` — необязательны.\n\n**Важно:** не передавайте `uvd_code`: backend берёт его из профиля текущего администратора. В ответе `invite_url` содержит секретный одноразовый access token — передайте его только пользователю/через QR-код.",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"pin\": \"1234\",\n  \"name\": \"Алия\",\n  \"surname\": \"Иманова\",\n  \"phone_number\": \"+996555123456\",\n  \"address\": \"г. Бишкек, ул. Пример, 1\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{admin_token}}",
+                  "type": "string"
+                }
+              ]
+            }
+          },
+          "response": [
+            {
+              "name": "Пользователь создан",
+              "originalRequest": {},
+              "status": "Created",
+              "code": 201,
+              "_postman_previewlanguage": "json",
+              "header": [
+                {
+                  "key": "Content-Type",
+                  "value": "application/json"
+                }
+              ],
+              "cookie": [],
+              "body": "{\n  \"message\": \"Пользователь создан. Передайте ему персональную ссылку или QR-код.\",\n  \"data\": {\n    \"id\": 1,\n    \"pin\": \"1234\",\n    \"name\": \"Алия\",\n    \"surname\": \"Иманова\",\n    \"phone_number\": \"+996 (555) 123-456\",\n    \"uvd_code\": \"0101\"\n  },\n  \"invite_url\": \"https://kamkor.mvd.kg/pwa/?access=secret_access_token\"\n}"
+            }
+          ],
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "const data = pm.response.json(); if (data.data && data.data.id) { pm.collectionVariables.set(\"user_id\", String(data.data.id)); }"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Перевыпустить персональную ссылку / QR",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Accept",
+                "value": "application/json",
+                "type": "text"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json",
+                "type": "text"
+              }
+            ],
+            "url": "{{base_url}}/api/admin/users/{{user_id}}/regenerate-access-link",
+            "description": "Создаёт новый токен персональной ссылки. Предыдущая ссылка сразу становится недействительной. Новую `invite_url` необходимо передать пользователю защищённым способом.",
+            "body": {
+              "mode": "raw",
+              "raw": "{}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{admin_token}}",
+                  "type": "string"
+                }
+              ]
+            }
+          },
+          "response": [
+            {
+              "name": "Ссылка перевыпущена",
+              "originalRequest": {},
+              "status": "OK",
+              "code": 200,
+              "_postman_previewlanguage": "json",
+              "header": [
+                {
+                  "key": "Content-Type",
+                  "value": "application/json"
+                }
+              ],
+              "cookie": [],
+              "body": "{\n  \"message\": \"Создана новая персональная ссылка. Предыдущая ссылка больше не работает.\",\n  \"data\": {\n    \"id\": 1,\n    \"name\": \"Алия\"\n  },\n  \"invite_url\": \"https://kamkor.mvd.kg/pwa/?access=new_secret_access_token\"\n}"
+            }
+          ]
+        },
+        {
+          "name": "Удалить пользователя и аннулировать доступ",
+          "request": {
+            "method": "DELETE",
+            "header": [
+              {
+                "key": "Accept",
+                "value": "application/json",
+                "type": "text"
+              }
+            ],
+            "url": "{{base_url}}/api/admin/users/{{user_id}}",
+            "description": "Удаляет пользователя только в зоне доступа администратора. Перед удалением все Sanctum-токены пользователя удаляются: активные сессии и персональная ссылка становятся недействительными.",
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{admin_token}}",
+                  "type": "string"
+                }
+              ]
+            }
+          },
+          "response": [
+            {
+              "name": "Пользователь удалён",
+              "originalRequest": {},
+              "status": "OK",
+              "code": 200,
+              "_postman_previewlanguage": "json",
+              "header": [
+                {
+                  "key": "Content-Type",
+                  "value": "application/json"
+                }
+              ],
+              "cookie": [],
+              "body": "{\n  \"message\": \"Пользователь удалён. Все его сессии и персональная ссылка аннулированы.\"\n}"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "name": "10 — Версии мобильного приложения",
+      "description": "Методы получения и сохранения актуальных версий Android и iOS. В таблице `app_versions` хранится максимум две записи: одна для `android` и одна для `ios`. POST использует `updateOrCreate` по полю `platform`: существующая запись обновляется, отсутствующая — создаётся.",
+      "item": [
+        {
+          "name": "Получить версии Android и iOS",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Accept",
+                "value": "application/json",
+                "type": "text"
+              }
+            ],
+            "url": "{{base_url}}/api/app-version",
+            "description": "Возвращает текущие версии приложений для обеих платформ. Если запись платформы ещё не создана, соответствующее значение будет `null`.\n\n**Авторизация:** согласно текущему маршруту не требуется."
+          },
+          "response": [
+            {
+              "name": "Версии приложений",
+              "originalRequest": {},
+              "status": "OK",
+              "code": 200,
+              "_postman_previewlanguage": "json",
+              "header": [
+                {
+                  "key": "Content-Type",
+                  "value": "application/json"
+                }
+              ],
+              "cookie": [],
+              "body": "{\n  \"android\": {\n    \"platform\": \"android\",\n    \"version\": \"1.0.5\"\n  },\n  \"ios\": {\n    \"platform\": \"ios\",\n    \"version\": \"1.0.3\"\n  }\n}"
+            },
+            {
+              "name": "Одна из платформ ещё не создана",
+              "originalRequest": {},
+              "status": "OK",
+              "code": 200,
+              "_postman_previewlanguage": "json",
+              "header": [
+                {
+                  "key": "Content-Type",
+                  "value": "application/json"
+                }
+              ],
+              "cookie": [],
+              "body": "{\n  \"android\": {\n    \"platform\": \"android\",\n    \"version\": \"1.0.5\"\n  },\n  \"ios\": null\n}"
+            }
+          ]
+        },
+        {
+          "name": "Создать или обновить версию платформы",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Accept",
+                "value": "application/json",
+                "type": "text"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json",
+                "type": "text"
+              }
+            ],
+            "url": "{{base_url}}/api/app-version",
+            "description": "Создаёт либо обновляет версию выбранной платформы.\n\n**Поля:**\n- `platform` — обязательное значение: `android` или `ios`;\n- `version` — обязательная строка, максимум 50 символов.\n\nПовторный запрос с той же платформой не создаёт новую строку, а обновляет существующую. Таким образом, в таблице остаётся максимум две записи.\n\n**Авторизация:** согласно текущему маршруту не требуется.",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"platform\": \"{{app_platform}}\",\n  \"version\": \"{{app_version}}\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "response": [
+            {
+              "name": "Версия создана",
+              "originalRequest": {},
+              "status": "OK",
+              "code": 200,
+              "_postman_previewlanguage": "json",
+              "header": [
+                {
+                  "key": "Content-Type",
+                  "value": "application/json"
+                }
+              ],
+              "cookie": [],
+              "body": "{\n  \"message\": \"Версия создана\",\n  \"data\": {\n    \"id\": 1,\n    \"platform\": \"android\",\n    \"version\": \"1.0.5\",\n    \"created_at\": \"2026-07-14T11:00:00.000000Z\",\n    \"updated_at\": \"2026-07-14T11:00:00.000000Z\"\n  }\n}"
+            },
+            {
+              "name": "Версия обновлена",
+              "originalRequest": {},
+              "status": "OK",
+              "code": 200,
+              "_postman_previewlanguage": "json",
+              "header": [
+                {
+                  "key": "Content-Type",
+                  "value": "application/json"
+                }
+              ],
+              "cookie": [],
+              "body": "{\n  \"message\": \"Версия обновлена\",\n  \"data\": {\n    \"id\": 1,\n    \"platform\": \"android\",\n    \"version\": \"1.0.6\",\n    \"created_at\": \"2026-07-14T11:00:00.000000Z\",\n    \"updated_at\": \"2026-07-14T11:15:00.000000Z\"\n  }\n}"
+            },
+            {
+              "name": "Ошибка валидации",
+              "originalRequest": {},
+              "status": "Unprocessable Content",
+              "code": 422,
+              "_postman_previewlanguage": "json",
+              "header": [
+                {
+                  "key": "Content-Type",
+                  "value": "application/json"
+                }
+              ],
+              "cookie": [],
+              "body": "{\n  \"message\": \"The platform field is invalid.\",\n  \"errors\": {\n    \"platform\": [\n      \"The selected platform is invalid.\"\n    ]\n  }\n}"
+            }
+          ],
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"Версия сохранена\", function () {",
+                  "    pm.expect(pm.response.code).to.be.oneOf([200, 201]);",
+                  "});",
+                  "const data = pm.response.json();",
+                  "if (data.data && data.data.platform) { pm.collectionVariables.set(\"app_platform\", data.data.platform); }",
+                  "if (data.data && data.data.version) { pm.collectionVariables.set(\"app_version\", data.data.version); }"
+                ]
+              }
+            }
+          ]
+        }
+      ]
+    }
+  ]
+}
