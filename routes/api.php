@@ -3,6 +3,7 @@
 use App\Http\Controllers\AdminAuthController;
 use App\Http\Controllers\AdminSosHistoryController;
 use App\Http\Controllers\AdminUserController;
+use App\Http\Controllers\AppVersionController;
 use App\Http\Controllers\AuthController;
 use App\Http\Controllers\CrisisCenterController;
 use App\Http\Controllers\EmergencyInstructionController;
@@ -47,6 +48,9 @@ Route::get('/emergency-instructions/{id}', [EmergencyInstructionController::clas
 // Ручной запуск оставлен для диагностики. По расписанию выполняется kamkor:sync-expired-orders.
 Route::post('/update-from-kamkor', [SecurityOrderController::class, 'updateUserFromKamkor'])->middleware('auth:sanctum');
 Route::post('/privacy-policy', [UsagePrivacyPolicyController::class, 'index']);
+
+Route::get('/app-version', [AppVersionController::class, 'index']);
+Route::post('/app-version', [AppVersionController::class, 'store']);
 
 Route::post('/admin-user/auth', [AdminAuthController::class, 'auth']);
 Route::middleware('auth:sanctum')->group(function (): void {
