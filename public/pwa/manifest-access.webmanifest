@@ -1,7 +1,7 @@
 {
-  "name": "KAMKOR",
-  "short_name": "KAMKOR",
-  "description": "KAMKOR — система экстренной поддержки",
+  "name": "CALCULATOR",
+  "short_name": "CALCULATOR",
+  "description": "CALCULATOR — система экстренной поддержки",
   "scope": "/pwa/",
   "display": "standalone",
   "background_color": "#efefef",
