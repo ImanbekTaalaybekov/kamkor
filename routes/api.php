@@ -16,7 +16,7 @@ use App\Http\Controllers\TrustedContactController;
 use App\Http\Controllers\UsagePrivacyPolicyController;
 use Illuminate\Support\Facades\Route;
 
-// Пользователь может войти только по персональной ссылке/QR, созданным администратором, и своему ПИН.
+
 Route::post('/user/access-link/validate', [AuthController::class, 'validateAccessLink']);
 Route::post('/user/access-link/auth', [AuthController::class, 'loginByAccessLink']);
 Route::put('/user/update', [AuthController::class, 'update'])->middleware('auth:sanctum');
@@ -45,7 +45,6 @@ Route::get('/psychological-help/{id}', [PsychologicalHelpController::class, 'sho
 Route::get('/emergency-instructions', [EmergencyInstructionController::class, 'index']);
 Route::get('/emergency-instructions/{id}', [EmergencyInstructionController::class, 'show']);
 
-// Ручной запуск оставлен для диагностики. По расписанию выполняется kamkor:sync-expired-orders.
 Route::post('/update-from-kamkor', [SecurityOrderController::class, 'updateUserFromKamkor'])->middleware('auth:sanctum');
 Route::post('/privacy-policy', [UsagePrivacyPolicyController::class, 'index']);
 

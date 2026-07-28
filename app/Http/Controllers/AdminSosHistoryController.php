@@ -14,31 +14,73 @@ use Illuminate\Validation\Rule;
 
 class AdminSosHistoryController extends Controller
 {
-    /**
-     * SOS-заявки в пределах прав администратора.
-     * В каждой заявке также возвращается актуальный статус охранного ордера пользователя.
-     */
+
     public function getRegionSosHistories(Request $request)
     {
         $admin = Auth::user();
 
-        $histories = $this->applyAdminAccessScope(
+        $validated = $request->validate([
+            'page' => ['sometimes', 'integer', 'min:1'],
+            'per_page' => ['sometimes', 'integer', 'min:1', 'max:100'],
+            'status' => ['sometimes', 'string', Rule::in(array_merge(['all'], $this->allowedStatuses()))],
+            'sort' => ['sometimes', 'string', Rule::in(['new_first', 'old_first'])],
+        ]);
+
+        $page = (int) ($validated['page'] ?? 1);
+        $perPage = (int) ($validated['per_page'] ?? 10);
+        $status = $validated['status'] ?? 'all';
+        $sort = $validated['sort'] ?? 'new_first';
+
+        $baseQuery = $this->applyAdminAccessScope(
             SosHistory::query()->with(['user.uvdGuide']),
             $admin
-        )
-            ->latest()
-            ->get()
-            ->map(fn (SosHistory $history) => $this->serializeSos($history))
-            ->values();
+        );
 
-        return response()->json(['data' => $histories]);
+        $pendingCount = (clone $baseQuery)
+            ->where(function ($query): void {
+                $query->where('status', 'pending')->orWhereNull('status');
+            })
+            ->count();
+
+        $latestSosId = (clone $baseQuery)->max('id');
+
+        if ($status !== 'all') {
+            if ($status === 'pending') {
+                $baseQuery->where(function ($query): void {
+                    $query->where('status', 'pending')->orWhereNull('status');
+                });
+            } else {
+                $baseQuery->where('status', $status);
+            }
+        }
+
+        $baseQuery
+            ->orderByRaw("CASE WHEN status = 'pending' OR status IS NULL THEN 0 ELSE 1 END ASC")
+            ->orderBy('created_at', $sort === 'old_first' ? 'asc' : 'desc')
+            ->orderBy('id', $sort === 'old_first' ? 'asc' : 'desc');
+
+        $paginator = $baseQuery->paginate($perPage, ['*'], 'page', $page);
+        $paginator->setCollection(
+            $paginator->getCollection()
+                ->map(fn (SosHistory $history) => $this->serializeSos($history))
+                ->values()
+        );
+
+        return response()->json([
+            'data' => $paginator->items(),
+            'meta' => [
+                'current_page' => $paginator->currentPage(),
+                'last_page' => $paginator->lastPage(),
+                'per_page' => $paginator->perPage(),
+                'total' => $paginator->total(),
+                'from' => $paginator->firstItem(),
+                'to' => $paginator->lastItem(),
+                'pending_count' => $pendingCount,
+                'latest_sos_id' => $latestSosId,
+            ],
+        ]);
     }
 
-    /**
-     * Аудиозапись выдаётся только авторизованному администратору, который имеет
-     * доступ к заявке по своему региону/району/УВД. Пользовательский API путь
-     * к файлу не получает.
-     */
     public function streamAudio(Request $request, $id)
     {
         $admin = $request->user();
@@ -59,8 +101,6 @@ class AdminSosHistoryController extends Controller
             return response()->json(['message' => 'Аудиозапись отсутствует'], 404);
         }
 
-        // Новые записи сохраняются в закрытом local-диске. Public fallback
-        // оставлен только для старых записей, созданных до этой доработки.
         $disk = Storage::disk('local');
         if (!$disk->exists($sos->audio_file)) {
             $disk = Storage::disk('public');

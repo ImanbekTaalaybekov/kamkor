@@ -9,15 +9,6 @@ use Illuminate\Support\Facades\Hash;
 
 class AuthController extends Controller
 {
-    /**
-     * Вход только по персональной ссылке/QR, созданным администратором, и ПИН пользователя.
-     * Токен Sanctum не имеет срока жизни и хранится на backend до удаления пользователя администратором.
-     */
-    /**
-     * Validates only the personal access link. The PWA calls this before
-     * showing the PIN field, so an ordinary /pwa/ opening cannot imitate
-     * the login form.
-     */
     public function validateAccessLink(Request $request)
     {
         $validated = $request->validate([
@@ -77,7 +68,6 @@ class AuthController extends Controller
     {
         return response()->json([
             'user' => new UserResource($request->user()),
-            // SOS доступен всегда, независимо от срока охранного ордера и статуса синхронизации.
             'sos_button_available' => true,
         ]);
     }
@@ -101,7 +91,6 @@ class AuthController extends Controller
 
     public function logout(Request $request)
     {
-        // Удаляется только текущая сессия на этом устройстве, а не все сессии пользователя.
         $request->user()->currentAccessToken()?->delete();
 
         return response()->json(['message' => 'Сессия на этом устройстве завершена.']);

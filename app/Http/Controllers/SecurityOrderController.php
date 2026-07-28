@@ -7,10 +7,6 @@ use Illuminate\Http\Request;
 
 class SecurityOrderController extends Controller
 {
-    /**
-     * Оставлен для ручной диагностики/принудительной синхронизации.
-     * Основная синхронизация выполняется командой kamkor:sync-expired-orders.
-     */
     public function updateUserFromKamkor(Request $request, SecurityOrderSyncService $securityOrderSyncService)
     {
         $user = $request->user();
