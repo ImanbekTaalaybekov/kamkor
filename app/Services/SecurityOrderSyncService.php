@@ -6,10 +6,6 @@ use App\Models\User;
 use Illuminate\Support\Facades\Http;
 use Throwable;
 
-/**
- * Синхронизирует данные охранного ордера с АИС/Tunduk для одного пользователя.
- * Ошибка синхронизации сохраняется у пользователя, чтобы её было видно в админке.
- */
 class SecurityOrderSyncService
 {
     public function sync(User $user): array

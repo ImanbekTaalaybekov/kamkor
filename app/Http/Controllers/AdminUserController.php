@@ -21,12 +21,36 @@ class AdminUserController extends Controller
             return response()->json(['message' => 'Доступ разрешён только администраторам.'], 403);
         }
 
-        $users = $this->applyAdminAccessScope(User::query()->with('uvdGuide'), $admin)
-            ->latest()
-            ->get()
-            ->map(fn (User $user) => $this->serializeUser($user));
+        $validated = $request->validate([
+            'page' => ['sometimes', 'integer', 'min:1'],
+            'per_page' => ['sometimes', 'integer', 'min:1', 'max:100'],
+        ]);
 
-        return response()->json(['data' => $users]);
+        $page = (int) ($validated['page'] ?? 1);
+        $perPage = (int) ($validated['per_page'] ?? 10);
+
+        $paginator = $this->applyAdminAccessScope(User::query()->with('uvdGuide'), $admin)
+            ->latest('created_at')
+            ->latest('id')
+            ->paginate($perPage, ['*'], 'page', $page);
+
+        $paginator->setCollection(
+            $paginator->getCollection()
+                ->map(fn (User $user) => $this->serializeUser($user))
+                ->values()
+        );
+
+        return response()->json([
+            'data' => $paginator->items(),
+            'meta' => [
+                'current_page' => $paginator->currentPage(),
+                'last_page' => $paginator->lastPage(),
+                'per_page' => $paginator->perPage(),
+                'total' => $paginator->total(),
+                'from' => $paginator->firstItem(),
+                'to' => $paginator->lastItem(),
+            ],
+        ]);
     }
 
     public function store(Request $request)
@@ -44,8 +68,6 @@ class AdminUserController extends Controller
             'address' => ['nullable', 'string', 'max:255'],
         ]);
 
-        // Код УВД не принимается из браузера: он всегда берётся из профиля
-        // текущего администратора. Это исключает создание пользователей в чужом УВД.
         $adminUvdCode = trim((string) $admin->uvd_code);
         $uvd = $adminUvdCode !== ''
             ? UvdGuide::where('code', $adminUvdCode)->first()
@@ -119,7 +141,6 @@ class AdminUserController extends Controller
             return response()->json(['message' => 'Пользователь не найден или недоступен.'], 404);
         }
 
-        // Лишаем доступа на всех устройствах до удаления пользователя.
         $user->tokens()->delete();
         $user->delete();
 
@@ -164,9 +185,6 @@ class AdminUserController extends Controller
         return collect();
     }
 
-    /**
-     * Stores the phone in one canonical readable format: +996 (XXX) XXX-XXX.
-     */
     private function normalizeKyrgyzPhone(?string $value): ?string
     {
         if ($value === null || trim($value) === '') {

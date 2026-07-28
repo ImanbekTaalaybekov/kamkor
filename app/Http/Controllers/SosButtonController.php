@@ -55,10 +55,6 @@ class SosButtonController extends Controller
         ]);
     }
 
-    /**
-     * Обновляет последнюю точку SOS. PWA вызывает этот метод раз в 15 секунд,
-     * пока заявка имеет активный статус.
-     */
     public function updateLocation(Request $request, $sosId)
     {
         $user = Auth::guard('sanctum')->user();
@@ -125,11 +121,9 @@ class SosButtonController extends Controller
         }
 
         $request->validate([
-            // Chrome/Android чаще всего передаёт запись как audio/webm.
             'audio' => 'required|file|max:10240|mimes:webm,ogg,mp3,wav,aac,m4a,mp4',
         ]);
 
-        // Диск local соответствует storage/app: файл не публикуется через /storage.
         $path = $request->file('audio')->store("sos_audio/{$user->id}", 'local');
 
         $sosHistory->update(['audio_file' => $path]);
